@@ -1,0 +1,29 @@
+---
+# ansible/group_vars/all/vars.yml
+# Non-sensitive variables shared across ALL hosts.
+# Safe to commit as-is.
+
+# --- NTP / Timezone ---
+timezone: "Europe/Lisbon"      # adjust to your timezone
+ntp_servers:
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+
+# --- Common packages installed on every host ---
+common_packages:
+  - curl
+  - vim
+  - htop
+  - git
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - python3-pip
+
+# --- SSH hardening ---
+ssh_permit_root_login: "no"
+ssh_password_auth: "no"
+ssh_port: 22
+
+# --- Logging ---
+log_retention_days: 30

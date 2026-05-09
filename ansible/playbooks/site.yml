@@ -1,0 +1,28 @@
+---
+# ansible/playbooks/site.yml
+# Master playbook — runs all roles in the correct order.
+# Idempotent: safe to run repeatedly.
+
+- name: Apply baseline configuration to all hosts
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: common
+
+- name: Configure Proxmox nodes
+  hosts: proxmox
+  gather_facts: true
+  roles:
+    - role: proxmox-baseline
+
+- name: Provision K3s cluster
+  hosts: k3s
+  gather_facts: true
+  roles:
+    - role: k3s-node
+
+- name: Provision Kubeadm cluster
+  hosts: kubeadm
+  gather_facts: true
+  roles:
+    - role: kubeadm-node

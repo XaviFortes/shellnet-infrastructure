@@ -1,0 +1,52 @@
+# .sops.yaml — SOPS configuration file
+# This file tells SOPS which keys to use when encrypting/decrypting files,
+# matched by path regex. It is SAFE to commit — it only contains public keys.
+#
+# SETUP GUIDE:
+#   1. Install age:      brew install age   OR   apt install age
+#   2. Generate keypair: age-keygen -o ~/.config/sops/age/keys.txt
+#   3. Copy the PUBLIC key (starts with "age1...") into the recipients below.
+#   4. NEVER commit keys.txt — it contains your private key.
+#   5. Set environment variable for decryption:
+#        export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
+#
+# MULTI-OPERATOR SETUP:
+#   Add each operator's public age key as an additional recipient.
+#   Any one private key can decrypt; all public keys are used to encrypt.
+# =============================================================================
+
+creation_rules:
+  # ---------------------------------------------------------------------------
+  # Terragrunt secrets — JSON format, one file per node
+  # ---------------------------------------------------------------------------
+  - path_regex: infrastructure/tofu/live/.*/secrets\.sops\.json$
+    key_groups:
+      - age:
+          # Primary operator key — replace with your actual public key
+          - &primary age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          # CI/CD key — a separate age key for GitHub Actions (rotate regularly)
+          - &cicd    age1yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+
+  # ---------------------------------------------------------------------------
+  # Ansible group_vars secrets — YAML format
+  # ---------------------------------------------------------------------------
+  - path_regex: ansible/group_vars/.*/vault\.sops\.yml$
+    key_groups:
+      - age:
+          - *primary
+          - *cicd
+
+  - path_regex: ansible/host_vars/.*/vault\.sops\.yml$
+    key_groups:
+      - age:
+          - *primary
+          - *cicd
+
+  # ---------------------------------------------------------------------------
+  # Kubernetes secrets (future use)
+  # ---------------------------------------------------------------------------
+  - path_regex: \.sops\.ya?ml$
+    key_groups:
+      - age:
+          - *primary
+          - *cicd

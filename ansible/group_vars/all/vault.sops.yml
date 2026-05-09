@@ -1,0 +1,40 @@
+---
+# ansible/group_vars/all/vault.sops.yml
+#
+# THIS FILE IS ENCRYPTED WITH SOPS + AGE.
+# The decrypted content below is shown only as documentation.
+# Never commit a plaintext version of this file.
+#
+# --- How to create/edit this file ---
+#
+#   Create (first time):
+#     Create a plaintext vault.yml with your secrets, then run:
+#       ./scripts/sops-encrypt.sh ansible/group_vars/all/vault.yml
+#
+#   Edit (subsequent times):
+#       sops ansible/group_vars/all/vault.sops.yml
+#     SOPS opens your $EDITOR with decrypted content and re-encrypts on save.
+#
+#   Ansible reads this automatically via the community.sops vars plugin
+#   configured in ansible.cfg — no extra flags needed.
+#
+# --- Expected plaintext structure (DO NOT commit unencrypted) ---
+#
+# vault_default_user_password: "changeme-strong-password"
+# vault_ssh_public_key: "ssh-ed25519 AAAA..."
+# vault_monitoring_token: "prom-remote-write-token"
+#
+# --- Encrypted content (safe to commit) ---
+vault_default_user_password: ENC[AES256_GCM,data:placeholder,type:str]
+vault_ssh_public_key: ENC[AES256_GCM,data:placeholder,type:str]
+vault_monitoring_token: ENC[AES256_GCM,data:placeholder,type:str]
+sops:
+    age:
+        - recipient: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            PLACEHOLDER
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-01-01T00:00:00Z"
+    mac: ENC[AES256_GCM,data:placeholder,type:str]
+    version: 3.8.1

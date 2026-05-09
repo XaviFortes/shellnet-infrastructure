@@ -1,0 +1,151 @@
+# =============================================================================
+# HOMELAB IAC - .gitignore
+# CRITICAL: This file prevents secrets and sensitive data from being committed.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# OpenTofu / Terraform - State & Sensitive Files
+# -----------------------------------------------------------------------------
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# NEVER commit plain tfvars — use SOPS-encrypted alternatives
+*.tfvars
+*.tfvars.json
+# Exception: example/template tfvars are safe to commit
+!*.tfvars.example
+!*.tfvars.json.example
+
+# Terragrunt cache
+**/.terragrunt-cache/
+
+# Override files (local developer overrides)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan files may contain secrets in plain text
+*.tfplan
+*.plan
+
+# -----------------------------------------------------------------------------
+# SOPS - Ensure only encrypted files are committed
+# -----------------------------------------------------------------------------
+# Unencrypted secret files (naming convention: *.dec.* or *.plain.*)
+*.dec.yml
+*.dec.yaml
+*.dec.json
+*.plain.yml
+*.plain.yaml
+*.plain.json
+# Decrypted SOPS output left on disk
+*.decrypted.*
+
+# -----------------------------------------------------------------------------
+# Age / GPG Private Keys - NEVER commit private keys
+# -----------------------------------------------------------------------------
+*.age
+!*.age.pub            # Public keys are safe
+*.key
+id_rsa
+id_ed25519
+id_ecdsa
+*.pem
+*.p12
+*.pfx
+# Age key files (default locations people accidentally copy here)
+keys.txt
+
+# -----------------------------------------------------------------------------
+# Ansible
+# -----------------------------------------------------------------------------
+# Retry files
+*.retry
+# Ansible Vault password files
+.vault_pass
+.vault_password
+vault_pass.txt
+vault_password.txt
+# Plaintext host_vars secrets (use group_vars/*/vault.sops.yml pattern instead)
+ansible/host_vars/*/vault.yml
+# Fact caches
+ansible/facts_cache/
+
+# -----------------------------------------------------------------------------
+# SSH Keys & Certificates
+# -----------------------------------------------------------------------------
+**/.ssh/
+*.pub
+!*.age.pub            # Age public keys are intentionally sharable
+id_*
+known_hosts
+
+# -----------------------------------------------------------------------------
+# Kubernetes Secrets & Configs
+# -----------------------------------------------------------------------------
+*kubeconfig*
+*kube.config*
+*.kubeconfig
+kubeconfig
+# Raw cluster secrets
+*-secret.yaml
+*-secret.yml
+# Exception: example sealed/sops-encrypted secrets
+!*-secret.sops.yaml
+!*-secret.sops.yml
+
+# -----------------------------------------------------------------------------
+# Environment & Local Config Files
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.local
+.direnv/
+.envrc               # direnv files may contain real secrets
+
+# -----------------------------------------------------------------------------
+# Editor & OS Artifacts
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.vscode/settings.json  # may contain personal paths/tokens
+.idea/
+
+# -----------------------------------------------------------------------------
+# Logs & Temporary Files
+# -----------------------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# -----------------------------------------------------------------------------
+# Python (used by Ansible)
+# -----------------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+.venv/
+
+# -----------------------------------------------------------------------------
+# Node (used by some helper scripts)
+# -----------------------------------------------------------------------------
+node_modules/
