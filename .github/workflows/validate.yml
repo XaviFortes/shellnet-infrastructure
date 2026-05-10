@@ -60,7 +60,7 @@ jobs:
           sudo apt-get install -y age
 
       - name: Terragrunt format check
-        run: terragrunt hclfmt --check --diff
+        run: terragrunt hcl fmt --check --diff
         working-directory: infrastructure/tofu/live
 
       - name: OpenTofu format check
