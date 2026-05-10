@@ -39,11 +39,11 @@ jobs:
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
-          tofu_version: "1.7.x"
+          tofu_version: "1.11.x"
 
       - name: Install Terragrunt
         run: |
-          TGVERSION="0.58.7"
+          TGVERSION="1.0.4"
           curl -sLo /usr/local/bin/terragrunt \
             "https://github.com/gruntwork-io/terragrunt/releases/download/v${TGVERSION}/terragrunt_linux_amd64"
           chmod +x /usr/local/bin/terragrunt

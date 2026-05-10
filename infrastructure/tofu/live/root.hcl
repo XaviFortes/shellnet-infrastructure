@@ -88,10 +88,10 @@ remote_state {
   }
 
   # Terragrunt-level flags — consumed by Terragrunt, NOT written to backend.tf.
-  # Backblaze B2 does not implement GetBucketAcl, GetBucketEncryption,
-  # GetBucketVersioning, GetBucketPolicy, or STS. Skip all unsupported calls.
-  disable_init          = false
-  disable_bucket_update = true
+  # disable_init = true: don't try to create/modify the B2 bucket. The bucket
+  # already exists and B2 doesn't support the AWS bucket-management APIs that
+  # Terragrunt would call (SSE, public-access-blocking, ACL, etc.).
+  disable_init = true
 
   config = {
     # ---------------------------------------------------------------------------
