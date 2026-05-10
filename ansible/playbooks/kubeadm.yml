@@ -1,0 +1,10 @@
+---
+# ansible/playbooks/kubeadm.yml
+# Kubeadm cluster provisioning — install and configure kubeadm on all kubeadm hosts.
+# Not yet implemented; role body is a stub.
+
+- name: Provision Kubeadm cluster
+  hosts: kubeadm
+  gather_facts: true
+  roles:
+    - role: kubeadm-node

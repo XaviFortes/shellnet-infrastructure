@@ -1,0 +1,10 @@
+---
+# ansible/playbooks/proxmox-baseline.yml
+# Proxmox baseline configuration — PVE updates, storage, VLAN config.
+# Not yet implemented; role body is a stub.
+
+- name: Configure Proxmox nodes
+  hosts: proxmox
+  gather_facts: true
+  roles:
+    - role: proxmox-baseline

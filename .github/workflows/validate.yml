@@ -90,5 +90,5 @@ jobs:
           ansible-galaxy collection install community.sops
 
       - name: Run ansible-lint
-        run: ansible-lint playbooks/
+        run: ansible-lint
         working-directory: ansible

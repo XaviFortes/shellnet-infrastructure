@@ -1,0 +1,10 @@
+---
+# ansible/playbooks/k3s.yml
+# K3s cluster provisioning — install and configure K3s on all k3s hosts.
+# Not yet implemented; role body is a stub.
+
+- name: Provision K3s cluster
+  hosts: k3s
+  gather_facts: true
+  roles:
+    - role: k3s-node

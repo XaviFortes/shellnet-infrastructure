@@ -19,8 +19,8 @@ resource "ovh_vps" "vps" {
 
   # VPS name matches the OVH-assigned identifier
   # These fields are informational after import — OVH manages the actual hardware.
-  display_name    = "${each.key}.vps.ovh.net"
-  ovh_subsidiary  = var.ovh_subsidiary
+  display_name   = "${each.key}.vps.ovh.net"
+  ovh_subsidiary = var.ovh_subsidiary
 
   lifecycle {
     # Prevent accidental destruction of production VPS via IaC mistake.

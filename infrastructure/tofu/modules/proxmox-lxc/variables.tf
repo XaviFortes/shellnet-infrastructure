@@ -17,7 +17,7 @@ variable "lxc_containers" {
     unprivileged  = optional(bool, true)
     start_on_boot = optional(bool, true)
     firewall      = optional(bool, false)
-    features      = optional(object({
+    features = optional(object({
       nesting = optional(bool, false)
     }), null)
   }))

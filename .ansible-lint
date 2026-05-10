@@ -1,0 +1,11 @@
+---
+# .ansible-lint
+# ansible-lint configuration for CI.
+# See: https://ansible-lint.readthedocs.io/configuring/
+
+profile: min
+
+# Skip rules that don't apply to a repo with stub/empty roles
+skip_list:
+  - role-name          # our role names use hyphens, not underscores
+  - no-changed-when    # not relevant for stub tasks
