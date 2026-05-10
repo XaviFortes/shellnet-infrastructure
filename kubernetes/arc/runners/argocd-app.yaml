@@ -57,6 +57,10 @@ spec:
             containers:
               - name: runner
                 image: ghcr.io/actions/actions-runner:latest
+                # ARC 0.9.3 does not inject a command override; the image Entrypoint
+                # is unset and Cmd=["/bin/bash"], which exits immediately.
+                # Explicitly set the runner entrypoint so the runner binary is invoked.
+                command: ["/home/runner/run.sh"]
                 resources:
                   requests:
                     cpu: 500m
