@@ -72,10 +72,6 @@ resource "proxmox_virtual_environment_vm" "vm" {
       scsi_hardware,
       # Tablet device is a default mismatch; not meaningful to enforce.
       tablet_device,
-      # QEMU guest agent IP info — not reliably available via API token ACL.
-      ipv4_addresses,
-      ipv6_addresses,
-      network_interface_names,
       # Agent block may not be installed on all VMs; avoid drift from config default.
       agent,
       # Keyboard layout is a UI preference; not meaningful to enforce.
