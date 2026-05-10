@@ -11,7 +11,7 @@ dependency "vms" {
 
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
   mock_outputs = {
-    vm_ips = { "k3s-ha-ovh-es" = "10.0.0.100" }
+    vm_ipv4_addresses = { "k3s-ha-ovh-es" = ["10.0.0.100"] }
   }
 }
 
@@ -29,7 +29,7 @@ terraform {
 inputs = {
   cluster_name    = "homelab-k3s"
   k3s_version     = "v1.30.0+k3s1"
-  server_ips      = [dependency.vms.outputs.vm_ips["k3s-ha-ovh-es"]]
+  server_ips      = [dependency.vms.outputs.vm_ipv4_addresses["k3s-ha-ovh-es"][0]]
   agent_ips       = [] # extend when adding dedicated agents
   k3s_token       = local.secrets.k3s_token
   kubeconfig_path = "~/.kube/homelab-k3s.yaml"
