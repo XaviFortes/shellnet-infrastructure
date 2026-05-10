@@ -1,0 +1,64 @@
+---
+# ansible/group_vars/ovh_k3s/vars.yml
+# Non-sensitive variables for the OVH K3s cluster. Safe to commit.
+#
+# Hardware (per node, discovered 2026-05-10):
+#   CPU: AMD EPYC Genoa (4 vCPU)
+#   RAM: 8GB (no swap)
+#   Disk: 75GB NVMe root + variable Longhorn block volumes
+#   Location: Madrid LocalZone (MAD1)
+#   OS: Debian 13 (trixie), kernel 6.12.85+deb13-cloud-amd64
+
+# K3s cluster identity
+ovh_k3s_cluster_name: "ovh-k3s-ha"
+ovh_k3s_version: "v1.33.5+k3s1"
+
+# Networking — Flannel vxlan, discovered from running cluster
+ovh_pod_cidr: "10.42.0.0/16"
+ovh_service_cidr: "10.43.0.0/16"
+ovh_flannel_backend: "vxlan"
+
+# Node-specific network details (non-sensitive topology info)
+ovh_node_roles:
+  vps-6b58f204:
+    k3s_roles: ["control-plane", "etcd", "master"]
+    flannel_subnet: "10.42.0.0/24"
+    longhorn_extra_disk: true      # sdc 5GB block device attached
+  vps-04483f6e:
+    k3s_roles: ["control-plane", "etcd", "master"]
+    flannel_subnet: "10.42.2.0/24"
+    wireguard_hub: true            # wg0 interface present, 10.8.0.1/24
+    longhorn_extra_disk: false
+  vps-d147fb4d:
+    k3s_roles: ["control-plane", "etcd", "master"]
+    flannel_subnet: "10.42.1.0/24"
+    longhorn_extra_disk: false
+
+# Longhorn storage
+longhorn_replica_count: 2       # 3 nodes, replicate to 2
+longhorn_data_path: "/var/lib/longhorn"
+longhorn_node_disk_path: "/dev/sdc"   # extra block device on vps-6b58f204
+
+# VPS specs (for documentation / alerting thresholds)
+ovh_vps_vcpus: 4
+ovh_vps_ram_gb: 8
+ovh_vps_disk_gb: 75
+
+# Namespaces running in the cluster
+ovh_k3s_namespaces:
+  - argocd
+  - cert-manager
+  - cnpg-system
+  - databases
+  - default
+  - kube-system
+  - lexus-telemetry
+  - longhorn-system
+  - matrix
+  - redis
+  - roberbot
+
+# Security — fail2ban is active on all OVH nodes
+fail2ban_enabled: true
+fail2ban_maxretry: 5
+fail2ban_bantime: 3600

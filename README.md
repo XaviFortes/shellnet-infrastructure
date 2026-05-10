@@ -22,8 +22,8 @@ This repository contains the full Infrastructure as Code (IaC) for a two-node Pr
 | Provisioning | OpenTofu + Terragrunt | Proxmox LXCs, VMs, networking |
 | Configuration | Ansible | OS hardening, service deployment |
 | Secret Management | SOPS + Age | Encrypted secrets committed safely |
-| Container Orchestration | K3s | Lightweight Kubernetes (node 01) |
-| Container Orchestration | Kubeadm | Full Kubernetes (node 02) |
+| Container Orchestration | K3s | Lightweight Kubernetes (almond + peanut) |
+| Container Orchestration | Kubeadm | Full Kubernetes (almond, HA control plane) |
 | CI/CD | GitHub Actions | Validate, lint, plan on every PR |
 | Remote State | S3-compatible (Minio) | State stored off-repo, never local |
 
@@ -32,25 +32,68 @@ This repository contains the full Infrastructure as Code (IaC) for a two-node Pr
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Homelab Network                       │
-│                                                          │
-│  ┌──────────────────┐      ┌──────────────────┐         │
-│  │   pve-node-01    │      │   pve-node-02    │         │
-│  │                  │      │                  │         │
-│  │  LXCs:           │      │  LXCs:           │         │
-│  │  ├─ dns-01       │      │  ├─ reverse-proxy │        │
-│  │  └─ monitoring   │      │  └─ storage       │        │
-│  │                  │      │                  │         │
-│  │  K3s Cluster:    │      │  Kubeadm Cluster:│         │
-│  │  ├─ server-01   │      │  ├─ control-plane │         │
-│  │  ├─ agent-01    │      │  ├─ worker-01     │         │
-│  │  └─ agent-02    │      │  └─ worker-02     │         │
-│  └──────────────────┘      └──────────────────┘         │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                        Homelab Network                            │
+│                                                                   │
+│  ┌────────────────────────────┐  ┌────────────────────────────┐  │
+│  │  almond                    │  │  peanut                    │  │
+│  │  AMD Ryzen 7 5800X / 64GB  │  │  AMD Ryzen 5 3600 / 32GB   │  │
+│  │                            │  │                            │  │
+│  │  LXCs:                     │  │  LXCs:                     │  │
+│  │  ├─ cloudflared            │  │  ├─ nginxproxymanager ◄─┐  │  │
+│  │  ├─ wireguard              │  │  ├─ adguard              │  │  │
+│  │  ├─ postgres               │  │  ├─ homarr               │  │  │
+│  │  ├─ minecraft              │  │  └─ postgres-replica     │  │  │
+│  │  ├─ coder-server           │  │                          │  │  │
+│  │  └─ ttyd                   │  │  VMs:                    │  │  │
+│  │                            │  │  ├─ k3s (K3s agent) ─────┼──┼──┐
+│  │  VMs:                      │  │  ├─ TrueNAS              │  │  ││
+│  │  ├─ kadm-master (K8s CP)   │  │  ├─ Home Assistant OS    │  │  ││
+│  │  ├─ kadm-w1 (K8s worker)   │  │  └─ kubeadm-h2 (K8s)    │  │  ││
+│  │  ├─ kubeadm-deb (K8s wkr)  │  └────────────────────────────┘  ││
+│  │  ├─ k3s-ha ────────────────┼──────────────────────────────────┼┼┐
+│  │  └─ docker                 │                                   │││
+│  └────────────────────────────┘                                   │││
+└──────────────────────────────────────────────────────────────────┘│││
+                                                                     │││
+┌────────────────────────────────────────────────────────────────┐  │││
+│  OVH Cloud — Madrid LocalZone (MAD1)    [IPs encrypted/private] │  │││
+│                                                                  │  │││
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │  │││
+│  │vps-6b58f204 │  │vps-04483f6e │  │vps-d147fb4d │            │  │││
+│  │4vCPU/8GB/75G│  │4vCPU/8GB/75G│  │4vCPU/8GB/75G│            │  │││
+│  │AMD EPYC Gen │  │AMD EPYC Gen │  │AMD EPYC Gen │            │  │││
+│  │Created:     │  │WireGuard hub│  │ArgoCD ctrl  │            │  │││
+│  │2025-11-15   │  │wg-easy      │  │Grafana       │            │  │││
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘            │  │││
+│         └────────────────┴─────────────────┘                   │  │││
+│                 K3s HA v1.33.5 (etcd distributed) ◄────────────┼──┘││
+│                 Traefik · cert-manager · Longhorn               │   ││
+│                 Matrix Synapse · CloudNativePG · Redis HA       │   ││
+│                 Grafana · InfluxDB · Mosquitto · frps           │   ││
+└────────────────────────────────────────────────────────────────┘   ││
+                                                                      ││
+┌────────────────────────────────────────────────────────────────┐   ││
+│  OVH Cloud — Gravelines GRA8            [IP encrypted/private]  │   ││
+│                                                                  │   ││
+│  vps-f24bf8b4  AMD EPYC Milan  2vCPU / 2GB / 40GB              │   ││
+│  Debian 12 · Created: 2023-08-28                                │   ││
+│                                                                  │   ││
+│  ├─ HAProxy L4/L7 ──────────────────────────────────────────────┼───┘│
+│  │   :80/:443  → nginxproxymanager (peanut LXC)                 │    │
+│  │   :6443     → kubeadm API server (almond)                    │    │
+│  │   :25565/6  → minecraft (almond LXC)                         │    │
+│  │   :51820    → TrueNAS (via Tailscale)                        │    │
+│  ├─ Redis (localhost)                                            │    │
+│  ├─ Tailscale mesh (100.122.164.104)                            │    │
+│  ├─ WireGuard wg0 (10.10.0.3/24)                               │    │
+│  └─ Zabbix agent                                                │    │
+└────────────────────────────────────────────────────────────────┘    │
+                                                                       │
+                        K3s agent (peanut/k3s VM) joins MAD cluster ──┘
 ```
 
-> Note: Specific IPs, hostnames, and hardware specs are intentionally omitted from this public repository.
+> All public IPs are stored encrypted via SOPS+Age and never appear in plaintext in this repository.
 
 ---
 
@@ -68,17 +111,17 @@ homelab/
 │   └── tofu/
 │       ├── live/               # Terragrunt live configurations (per node)
 │       │   ├── terragrunt.hcl  # Root config: remote state, providers, SOPS
-│       │   ├── pve-node-01/
+│       │   ├── almond/
 │       │   │   ├── region.hcl              # Non-sensitive node config
 │       │   │   ├── secrets.sops.json       # Encrypted secrets (safe to commit)
-│       │   │   ├── lxc/terragrunt.hcl
-│       │   │   ├── vms/terragrunt.hcl
+│       │   │   ├── lxc/terragrunt.hcl      # minecraft, wireguard, postgres, ...
+│       │   │   ├── vms/terragrunt.hcl      # kadm-master, k3s-ha, docker, ...
 │       │   │   └── k3s/terragrunt.hcl
-│       │   └── pve-node-02/
+│       │   └── peanut/
 │       │       ├── region.hcl
 │       │       ├── secrets.sops.json
-│       │       ├── lxc/terragrunt.hcl
-│       │       ├── vms/terragrunt.hcl
+│       │       ├── lxc/terragrunt.hcl      # nginxproxymanager, adguard, homarr, ...
+│       │       ├── vms/terragrunt.hcl      # k3s, TrueNAS, haos, kubeadm-h2
 │       │       └── kubeadm/terragrunt.hcl
 │       └── modules/            # Reusable OpenTofu modules
 │           ├── proxmox-lxc/

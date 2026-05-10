@@ -17,30 +17,35 @@
 
 creation_rules:
   # ---------------------------------------------------------------------------
-  # Terragrunt secrets — JSON format, one file per node
+  # Common shared secrets — one file at the live/ root.
+  # Holds: Backblaze state backend, SSH public key, OVH API creds.
   # ---------------------------------------------------------------------------
-  - path_regex: infrastructure/tofu/live/.*/secrets\.sops\.json$
+  - path_regex: infrastructure/tofu/live/common(\.sops)?\.json$
     key_groups:
       - age:
-          # Primary operator key — replace with your actual public key
-          - &primary age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          # CI/CD key — a separate age key for GitHub Actions (rotate regularly)
-          - &cicd    age1yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+          - &primary age1kttje7qaqggnssmu4a40ptm649wthp0twmd4c9jsjstkpnuptqdqp3fkc0
+
+  # ---------------------------------------------------------------------------
+  # Per-node secrets — only holds what is unique to that node.
+  # Holds: proxmox token (proxmox nodes), k3s token (k3s nodes), etc.
+  # ---------------------------------------------------------------------------
+  - path_regex: infrastructure/tofu/live/.*/secrets(\.sops)?\.json$
+    key_groups:
+      - age:
+          - *primary
 
   # ---------------------------------------------------------------------------
   # Ansible group_vars secrets — YAML format
   # ---------------------------------------------------------------------------
-  - path_regex: ansible/group_vars/.*/vault\.sops\.yml$
+  - path_regex: ansible/group_vars/.*/vault(\.sops)?\.yml$
     key_groups:
       - age:
           - *primary
-          - *cicd
 
-  - path_regex: ansible/host_vars/.*/vault\.sops\.yml$
+  - path_regex: ansible/host_vars/.*/vault(\.sops)?\.yml$
     key_groups:
       - age:
           - *primary
-          - *cicd
 
   # ---------------------------------------------------------------------------
   # Kubernetes secrets (future use)
@@ -49,4 +54,16 @@ creation_rules:
     key_groups:
       - age:
           - *primary
-          - *cicd
+
+  - path_regex: ansible/host_vars/.*/vault(\.sops)?\.yml$
+    key_groups:
+      - age:
+          - *primary
+
+  # ---------------------------------------------------------------------------
+  # Kubernetes secrets (future use)
+  # ---------------------------------------------------------------------------
+  - path_regex: \.sops\.ya?ml$
+    key_groups:
+      - age:
+          - *primary

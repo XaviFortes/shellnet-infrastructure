@@ -79,7 +79,26 @@ if [[ $ERRORS -eq 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Ensure age private key file is not tracked
+# 4. Check that no public IPs appear in plaintext (OVH VPS are sensitive)
+#    This regex matches common public IP ranges but excludes RFC1918 private.
+# ---------------------------------------------------------------------------
+echo "[check] Scanning for public IP addresses in plaintext files..."
+# Matches IPv4 that are NOT in 10.x, 172.16-31.x, 192.168.x, 127.x
+PUBLIC_IP_PATTERN='\b(?!10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.)[2-9][0-9]{0,2}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b'
+
+IP_MATCHES=$(git grep -l -P "$PUBLIC_IP_PATTERN" -- \
+  ':!*.sops.*' ':!*.example' ':!*.gitignore' ':!scripts/' ':!docs/' ':!README.md' 2>/dev/null || true)
+
+if [[ -n "$IP_MATCHES" ]]; then
+  echo "  FAIL: Public IP addresses found in plaintext files:"
+  echo "$IP_MATCHES" | sed 's/^/    /'
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  OK"
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Ensure age private key file is not tracked
 # ---------------------------------------------------------------------------
 echo "[check] Ensuring age private keys are not tracked..."
 AGE_KEYS=$(git ls-files | grep -E '(keys\.txt|\.age$)' | grep -v '\.age\.pub' || true)

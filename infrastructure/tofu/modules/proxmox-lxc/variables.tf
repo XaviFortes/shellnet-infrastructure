@@ -3,14 +3,23 @@
 variable "lxc_containers" {
   description = "List of LXC container definitions to create."
   type = list(object({
-    hostname  = string
-    vmid      = number
-    cores     = number
-    memory    = number
-    disk_size = string
-    ip        = string
-    template  = string
-    tags      = optional(list(string), [])
+    hostname      = string
+    vmid          = number
+    cores         = number
+    memory        = number
+    disk_size     = string
+    ip            = string
+    gateway       = optional(string, null)
+    os_type       = optional(string, "debian")
+    template      = optional(string, null)
+    tags          = optional(list(string), [])
+    swap          = optional(number, 0)
+    unprivileged  = optional(bool, true)
+    start_on_boot = optional(bool, true)
+    firewall      = optional(bool, false)
+    features      = optional(object({
+      nesting = optional(bool, false)
+    }), null)
   }))
 }
 

@@ -1,0 +1,56 @@
+---
+# ansible/group_vars/ovh_gra/vars.yml
+# Non-sensitive variables for the Gravelines edge node. Safe to commit.
+
+# Node identity
+ovh_gra_node_name: "vps-f24bf8b4"
+ovh_gra_zone: "GRA8"
+
+# HAProxy — port bindings (what listens publicly, no backend IPs here)
+haproxy_frontends:
+  - name: http_front
+    port: 80
+    mode: http
+  - name: https_front
+    port: 443
+    mode: http
+    ssl: true
+  - name: wg_front
+    port: 51820
+    mode: tcp
+  - name: minecraft_main
+    port: 25565
+    mode: tcp
+  - name: minecraft_uhc
+    port: 25566
+    mode: tcp
+  - name: kubeadm_api
+    port: 6443
+    mode: tcp
+
+# Certbot domains (no IPs, just domain names — safe to commit)
+certbot_domains:
+  - "kubeadm-deb.almond.inovexservices.com"   # expired, needs renewal
+
+# Tailscale
+tailscale_enabled: true
+tailscale_ip: "100.122.164.104"   # Tailscale IP is not sensitive (RFC 6598 CGNAT range)
+tailscale_exit_node: false
+
+# Redis (localhost only)
+redis_bind: "127.0.0.1"
+redis_port: 6379
+
+# Zabbix agent
+zabbix_agent_enabled: true
+zabbix_server_tailscale_ip: "100.70.14.45"   # snapshot-312866245-debian... node
+
+# WireGuard
+wireguard_interface: "wg0"
+wireguard_ip: "10.10.0.3/24"
+
+# Snapd / certbot installed via snap
+snap_packages:
+  - certbot
+  - core24
+  - snapd
