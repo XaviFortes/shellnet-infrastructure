@@ -29,7 +29,7 @@ terraform {
 inputs = {
   cluster_name    = "homelab-k3s"
   k3s_version     = "v1.30.0+k3s1"
-  server_ips      = [dependency.vms.outputs.vm_ipv4_addresses["k3s-ha-ovh-es"][0][0]]
+  server_ips      = [try(dependency.vms.outputs.vm_ipv4_addresses["k3s-ha-ovh-es"][0][0], "10.0.0.100")]
   agent_ips       = [] # extend when adding dedicated agents
   k3s_token       = local.secrets.ovh_k3s_token
   kubeconfig_path = "~/.kube/homelab-k3s.yaml"

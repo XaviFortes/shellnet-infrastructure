@@ -35,7 +35,7 @@ inputs = {
   control_plane_ip = local.secrets.kubeadm_control_plane_ip
 
   worker_ips = [
-    dependency.vms.outputs.vm_ipv4_addresses["kubeadm-h2"][0][0],
+    try(dependency.vms.outputs.vm_ipv4_addresses["kubeadm-h2"][0][0], "10.0.0.200"),
   ]
 
   pod_cidr     = "10.244.0.0/16"
