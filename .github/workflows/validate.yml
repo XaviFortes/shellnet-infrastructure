@@ -107,23 +107,14 @@ jobs:
 
       - name: Install ansible-lint and community.sops
         run: |
-          # Ubuntu 24.04 uses PEP 668 externally-managed Python — use pipx
-          if ! command -v pipx &>/dev/null; then
-            sudo apt-get install -y pipx
-            pipx ensurepath
-          fi
-          if ! command -v ansible-lint &>/dev/null; then
-            pipx install ansible-lint
-          fi
-          # ansible-galaxy needs ansible installed alongside ansible-lint
-          pipx inject ansible-lint ansible 2>/dev/null || true
-          export PATH="$HOME/.local/bin:$PATH"
-          ansible-galaxy collection install community.sops --upgrade
+          # Use a venv to avoid PEP 668 externally-managed-environment error
+          python3 -m venv /tmp/ansible-venv
+          /tmp/ansible-venv/bin/pip install --quiet --upgrade ansible-lint ansible
+          echo "/tmp/ansible-venv/bin" >> "$GITHUB_PATH"
+          /tmp/ansible-venv/bin/ansible-galaxy collection install community.sops --upgrade
 
       - name: Run ansible-lint
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          ansible-lint
+        run: ansible-lint
         working-directory: ansible
 
   # ---------------------------------------------------------------------------
@@ -168,8 +159,12 @@ jobs:
         id: plan
         run: |
           set +e
-          # Stream output live (visible in Actions log) and capture to file simultaneously
-          terragrunt run --all plan --non-interactive 2>&1 | tee /tmp/plan_output.txt
+          # Exclude stacks that require SSH access to the internal network (10.0.x.x)
+          # — almond/k3s and peanut/kubeadm SSH into Proxmox VMs not reachable from CI.
+          # Run these manually with: ./run tofu plan almond/k3s  (or peanut/kubeadm)
+          EXCLUDE="--exclude-dir almond/k3s --exclude-dir peanut/kubeadm"
+          # Stream output live and capture to file simultaneously
+          terragrunt run --all plan --non-interactive $EXCLUDE 2>&1 | tee /tmp/plan_output.txt
           EXIT_CODE=${PIPESTATUS[0]}
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
@@ -269,5 +264,8 @@ jobs:
           fi
 
       - name: Terragrunt apply (all stacks)
-        run: terragrunt run --all apply --non-interactive --auto-approve
+        run: |
+          # Same exclusions as plan — internal-network stacks require SSH to Proxmox VMs
+          terragrunt run --all apply --non-interactive --auto-approve \
+            --exclude-dir almond/k3s --exclude-dir peanut/kubeadm
         working-directory: infrastructure/tofu/live
