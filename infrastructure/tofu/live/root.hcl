@@ -112,11 +112,17 @@ remote_state {
     force_path_style            = true
 
     # Backblaze B2 does not implement GetBucketAcl, GetBucketEncryption,
-    # GetBucketVersioning, or GetBucketPolicy (TLS check). Skip all of them.
-    skip_bucket_root_access           = true
-    skip_bucket_ssencryption_check    = true
-    skip_bucket_versioning_check      = true
-    skip_bucket_enforced_tls          = true
+    # GetBucketVersioning, GetBucketPolicy (TLS check), or STS AssumeRole.
+    # Skip all unsupported API calls to avoid 501 / DNS errors.
+    skip_bucket_root_access        = true
+    skip_bucket_ssencryption_check = true
+    skip_bucket_versioning_check   = true
+    skip_bucket_enforced_tls       = true
+    skip_requesting_account_id     = true
+
+    # Prevent Terragrunt from trying to enable SSE / public-access-blocking
+    # on the B2 bucket — those APIs are not supported and would fail.
+    disable_bucket_update = true
 
     # Backblaze B2 does not support DynamoDB-style locking or OpenTofu's
     # native file-based locking (use_lockfile). For a solo operator this is
