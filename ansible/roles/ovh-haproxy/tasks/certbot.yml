@@ -1,0 +1,57 @@
+---
+# roles/ovh-haproxy/tasks/certbot.yml
+# Uses Certbot installed via snap (as configured on vps-f24bf8b4).
+
+- name: Install snapd
+  ansible.builtin.apt:
+    name: snapd
+    state: present
+
+- name: Install core snap (required for certbot snap)
+  community.general.snap:
+    name: core
+    state: present
+
+- name: Install certbot snap
+  community.general.snap:
+    name: certbot
+    classic: true
+    state: present
+
+- name: Ensure certbot symlink exists
+  ansible.builtin.file:
+    src: /snap/bin/certbot
+    dest: /usr/bin/certbot
+    state: link
+
+- name: Install certbot DNS Cloudflare plugin
+  community.general.snap:
+    name: certbot-dns-cloudflare
+    classic: true
+    state: present
+  when: certbot_dns_provider is defined and certbot_dns_provider == "cloudflare"
+
+- name: Check if certificate already exists for primary domain
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ certbot_domains[0] }}/fullchain.pem"
+  register: cert_stat
+
+- name: Obtain certificates (HTTP-01 challenge)
+  ansible.builtin.command: >
+    certbot certonly
+    --standalone
+    --non-interactive
+    --agree-tos
+    --email {{ certbot_email }}
+    {% for domain in certbot_domains %}
+    -d {{ domain }}
+    {% endfor %}
+  when:
+    - not cert_stat.stat.exists
+    - certbot_dns_provider is not defined
+  changed_when: true
+
+- name: Deploy certbot renewal systemd timer (idempotent via certbot itself)
+  ansible.builtin.command: certbot renew --dry-run
+  changed_when: false
+  failed_when: false

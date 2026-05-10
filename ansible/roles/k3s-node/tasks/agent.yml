@@ -1,0 +1,28 @@
+---
+# roles/k3s-node/tasks/agent.yml
+# Join an existing K3s cluster as a worker (agent) node.
+
+- name: Create K3s config directory
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install K3s agent
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="{{ ovh_k3s_version }}" \
+      K3S_URL="https://{{ hostvars[k3s_init_server]['ansible_host'] }}:6443" \
+      K3S_TOKEN="{{ vault_ovh_k3s_token }}" \
+      sh -s - agent
+  args:
+    creates: /usr/local/bin/k3s
+  notify: Restart k3s agent
+
+- name: Enable and start k3s-agent service
+  ansible.builtin.service:
+    name: k3s-agent
+    enabled: true
+    state: started

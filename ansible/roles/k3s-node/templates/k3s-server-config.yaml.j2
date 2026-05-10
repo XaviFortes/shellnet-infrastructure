@@ -1,0 +1,28 @@
+# /etc/rancher/k3s/config.yaml — managed by Ansible
+# Server configuration for K3s HA cluster with embedded etcd.
+
+cluster-cidr: "{{ ovh_pod_cidr }}"
+service-cidr: "{{ ovh_service_cidr }}"
+flannel-backend: "{{ ovh_flannel_backend }}"
+write-kubeconfig-mode: "{{ k3s_kubeconfig_mode }}"
+
+# Disable bundled components managed externally
+disable:
+{% for component in k3s_disable_components %}
+  - {{ component }}
+{% endfor %}
+
+# Advertise the public IP for TLS SANs and external access
+tls-san:
+  - "{{ ansible_host }}"
+  - "{{ inventory_hostname }}"
+
+node-label:
+{% for label in k3s_node_labels %}
+  - "{{ label }}"
+{% endfor %}
+
+{% if k3s_server_extra_args %}
+# Extra args
+{{ k3s_server_extra_args }}
+{% endif %}

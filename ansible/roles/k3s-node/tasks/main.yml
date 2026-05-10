@@ -1,3 +1,27 @@
 ---
-# tasks/main.yml — k3s-node
-# Tasks not yet implemented.
+# roles/k3s-node/tasks/main.yml
+# Installs and configures K3s on OVH VPS nodes (3-server HA cluster, embedded etcd).
+# Idempotent: safe to run on already-joined nodes.
+
+- name: Include server tasks
+  ansible.builtin.include_tasks: server.yml
+  when: k3s_role == "server"
+
+- name: Include agent tasks
+  ansible.builtin.include_tasks: agent.yml
+  when: k3s_role == "agent"
+
+- name: Apply node labels
+  ansible.builtin.command: >
+    k3s kubectl label node {{ inventory_hostname }}
+    {{ item }}
+    --overwrite
+  loop: "{{ k3s_node_labels }}"
+  when:
+    - k3s_node_labels | length > 0
+    - k3s_role == "server"
+  changed_when: true
+
+- name: Prepare Longhorn disk
+  ansible.builtin.include_tasks: longhorn.yml
+  when: longhorn_extra_disk | bool

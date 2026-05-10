@@ -1,0 +1,12 @@
+---
+# group_vars/kubeadm/vars.yml
+# Non-sensitive variables for Kubeadm cluster nodes (on almond/peanut VMs).
+
+kubeadm_version: "1.31"
+kubeadm_pod_cidr: "192.168.0.0/16"    # Calico default
+kubeadm_service_cidr: "10.96.0.0/12"
+kubeadm_cni: "calico"
+
+# SSH
+ssh_permit_root_login: "no"
+ssh_password_auth: "no"

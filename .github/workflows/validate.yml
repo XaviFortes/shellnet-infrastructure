@@ -94,3 +94,159 @@ jobs:
       - name: Run ansible-lint
         run: ansible-lint
         working-directory: ansible
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Terragrunt plan (all stacks).
+  # Runs on PRs and on push to main (before apply).
+  # On PRs: posts the plan output as a comment.
+  # Read-only B2 keys are sufficient for plan.
+  # ---------------------------------------------------------------------------
+  tofu-plan:
+    name: OpenTofu Plan
+    runs-on: ubuntu-latest
+    needs: tofu-validate
+    permissions:
+      pull-requests: write   # needed to post PR comments
+      contents: read
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.11.x"
+
+      - name: Install Terragrunt
+        run: |
+          TGVERSION="1.0.4"
+          curl -sLo /usr/local/bin/terragrunt \
+            "https://github.com/gruntwork-io/terragrunt/releases/download/v${TGVERSION}/terragrunt_linux_amd64"
+          chmod +x /usr/local/bin/terragrunt
+
+      - name: Install SOPS
+        run: |
+          SOPS_VERSION="3.8.1"
+          curl -sLo /usr/local/bin/sops \
+            "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+          chmod +x /usr/local/bin/sops
+
+      - name: Install age
+        run: |
+          sudo apt-get install -y age
+
+      - name: Terragrunt plan (all stacks)
+        id: plan
+        run: |
+          set +e
+          OUTPUT=$(terragrunt run --all plan --non-interactive 2>&1)
+          EXIT_CODE=$?
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+
+          # Truncate to last 60000 chars to stay within GitHub comment limits
+          if [ ${#OUTPUT} -gt 60000 ]; then
+            OUTPUT="...(truncated — see Actions log for full output)...${OUTPUT: -60000}"
+          fi
+
+          # Write to file to preserve newlines through env var boundary
+          printf '%s' "$OUTPUT" > /tmp/plan_output.txt
+          echo "Plan exit code: ${EXIT_CODE}"
+          cat /tmp/plan_output.txt
+          exit $EXIT_CODE
+        working-directory: infrastructure/tofu/live
+
+      - name: Post plan as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('/tmp/plan_output.txt', 'utf8');
+            const exitCode = '${{ steps.plan.outputs.exit_code }}';
+            const status = exitCode === '0' ? '✅ Success' : '❌ Failed';
+
+            const body = [
+              `## Terragrunt Plan — ${status}`,
+              '',
+              '<details><summary>Show Plan Output</summary>',
+              '',
+              '```',
+              planOutput,
+              '```',
+              '',
+              '</details>',
+              '',
+              `*Triggered by commit \`${{ github.sha }}\` on branch \`${{ github.head_ref }}\`*`,
+            ].join('\n');
+
+            // Delete previous plan comments to avoid clutter
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            for (const comment of comments) {
+              if (comment.user.login === 'github-actions[bot]' &&
+                  comment.body.startsWith('## Terragrunt Plan')) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+  # ---------------------------------------------------------------------------
+  # Job 5: Terragrunt apply (main branch only).
+  # Requires 'production' GitHub Environment with required reviewers configured.
+  # Uses read-write B2 keys (B2_RW_ACCESS_KEY_ID / B2_RW_SECRET_KEY).
+  # ---------------------------------------------------------------------------
+  tofu-apply:
+    name: OpenTofu Apply
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: tofu-plan
+    environment: production
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_RW_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_RW_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.11.x"
+
+      - name: Install Terragrunt
+        run: |
+          TGVERSION="1.0.4"
+          curl -sLo /usr/local/bin/terragrunt \
+            "https://github.com/gruntwork-io/terragrunt/releases/download/v${TGVERSION}/terragrunt_linux_amd64"
+          chmod +x /usr/local/bin/terragrunt
+
+      - name: Install SOPS
+        run: |
+          SOPS_VERSION="3.8.1"
+          curl -sLo /usr/local/bin/sops \
+            "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+          chmod +x /usr/local/bin/sops
+
+      - name: Install age
+        run: |
+          sudo apt-get install -y age
+
+      - name: Terragrunt apply (all stacks)
+        run: terragrunt run --all apply --non-interactive --auto-approve
+        working-directory: infrastructure/tofu/live

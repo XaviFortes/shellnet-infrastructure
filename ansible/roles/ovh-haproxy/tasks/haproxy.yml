@@ -1,0 +1,18 @@
+---
+# roles/ovh-haproxy/tasks/haproxy.yml
+
+- name: Deploy haproxy.cfg
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "haproxy -c -f %s"
+  notify: Reload haproxy
+
+- name: Enable and start HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    enabled: true
+    state: started

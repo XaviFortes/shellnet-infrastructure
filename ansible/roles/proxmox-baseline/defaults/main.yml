@@ -1,0 +1,31 @@
+---
+# roles/proxmox-baseline/defaults/main.yml
+
+# PVE version to target (used to pin correct repo URLs)
+pve_version: "8"
+
+# Whether to remove the enterprise subscription repo (requires paid license)
+pve_remove_enterprise_repo: true
+
+# Whether to add the no-subscription (community) repo
+pve_add_no_subscription_repo: true
+
+# Whether to remove the Ceph enterprise repo if present
+pve_remove_ceph_enterprise_repo: true
+
+# Whether to run full-upgrade after repo setup
+pve_full_upgrade: true
+
+# Whether to enable IOMMU (for GPU/device passthrough)
+pve_iommu_enabled: false
+pve_iommu_cpu_vendor: "amd"    # "amd" or "intel"
+
+# SMTP alert settings — set vault_pve_smtp_* in vault to enable
+pve_smtp_enabled: false
+pve_smtp_from: ""
+pve_smtp_to: ""
+pve_smtp_server: ""
+pve_smtp_port: 587
+
+# Storage
+pve_local_lvm_thin: true       # keep thin-pool for VM disks

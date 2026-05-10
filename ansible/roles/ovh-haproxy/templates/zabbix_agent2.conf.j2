@@ -1,0 +1,10 @@
+# /etc/zabbix/zabbix_agent2.conf — managed by Ansible
+
+Server={{ zabbix_server_tailscale_ip }}
+ServerActive={{ zabbix_server_tailscale_ip }}
+Hostname={{ inventory_hostname }}
+
+LogFile=/var/log/zabbix/zabbix_agent2.log
+LogFileSize=10
+PidFile=/run/zabbix/zabbix_agent2.pid
+ControlSocket=/tmp/agent.sock

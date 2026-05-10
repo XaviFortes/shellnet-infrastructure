@@ -1,0 +1,79 @@
+---
+# roles/k3s-node/tasks/server.yml
+# Bootstrap or join a K3s server node (embedded etcd HA).
+
+- name: Create K3s config directory
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check if K3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Check if this node has already joined the cluster
+  ansible.builtin.stat:
+    path: "{{ k3s_data_dir }}/server/node-token"
+  register: k3s_node_token_file
+
+# Only write config and run installer if K3s is not yet installed
+- name: Deploy K3s server config
+  ansible.builtin.template:
+    src: k3s-server-config.yaml.j2
+    dest: "{{ k3s_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+  when: not k3s_binary.stat.exists
+  notify: Restart k3s server
+
+- name: Install K3s server (init node — bootstraps etcd cluster)
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="{{ ovh_k3s_version }}" \
+      sh -s - server \
+        --cluster-init \
+        --token "{{ vault_ovh_k3s_token }}" \
+        --tls-san "{{ ansible_host }}"
+  args:
+    creates: /usr/local/bin/k3s
+  when:
+    - not k3s_binary.stat.exists
+    - inventory_hostname == k3s_init_server
+
+- name: Install K3s server (join existing cluster)
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="{{ ovh_k3s_version }}" \
+      K3S_URL="https://{{ hostvars[k3s_init_server]['ansible_host'] }}:6443" \
+      K3S_TOKEN="{{ vault_ovh_k3s_token }}" \
+      sh -s - server \
+        --tls-san "{{ ansible_host }}"
+  args:
+    creates: /usr/local/bin/k3s
+  when:
+    - not k3s_binary.stat.exists
+    - inventory_hostname != k3s_init_server
+
+- name: Enable and start k3s service
+  ansible.builtin.service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Wait for node to be Ready
+  ansible.builtin.command: >
+    k3s kubectl wait node/{{ inventory_hostname }}
+    --for=condition=Ready
+    --timeout=120s
+  changed_when: false
+  when: inventory_hostname == k3s_init_server
+
+- name: Set kubeconfig permissions
+  ansible.builtin.file:
+    path: /etc/rancher/k3s/k3s.yaml
+    mode: "{{ k3s_kubeconfig_mode }}"

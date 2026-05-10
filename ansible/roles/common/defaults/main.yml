@@ -1,0 +1,35 @@
+---
+# roles/common/defaults/main.yml
+# Overridable defaults — all can be overridden in group_vars or host_vars.
+
+timezone: "Europe/Lisbon"
+
+ntp_servers:
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+
+common_packages:
+  - curl
+  - vim
+  - htop
+  - git
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - python3-pip
+  - unattended-upgrades
+  - apt-listchanges
+  - logrotate
+
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_auth: "no"
+ssh_max_auth_tries: 3
+ssh_allow_groups: ""        # empty = no Group restriction; set e.g. "sudo wheel"
+
+fail2ban_enabled: true
+fail2ban_maxretry: 5
+fail2ban_bantime: 3600      # seconds
+fail2ban_findtime: 600      # seconds
+
+log_retention_days: 30

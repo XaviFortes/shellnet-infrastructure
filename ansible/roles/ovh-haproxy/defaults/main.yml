@@ -1,0 +1,40 @@
+---
+# roles/ovh-haproxy/defaults/main.yml
+
+# HAProxy
+haproxy_user: haproxy
+haproxy_group: haproxy
+haproxy_stats_enabled: true
+haproxy_stats_port: 8404
+haproxy_stats_uri: "/stats"
+# haproxy_stats_password: set in vault as vault_haproxy_stats_password
+
+haproxy_frontends: []   # override in group_vars/ovh_gra/vars.yml
+haproxy_backends: []    # define custom backends here or in group_vars
+
+# Redis
+redis_bind: "127.0.0.1"
+redis_port: 6379
+redis_maxmemory: "256mb"
+redis_maxmemory_policy: "allkeys-lru"
+# vault_redis_password: set in vault (empty string = no auth)
+
+# Tailscale
+tailscale_enabled: false
+tailscale_exit_node: false
+# vault_tailscale_auth_key: set in vault
+
+# WireGuard
+wireguard_interface: "wg0"
+wireguard_ip: "10.10.0.3/24"
+wireguard_listen_port: 51820
+# vault_wireguard_private_key: set in vault
+
+# Certbot (via snap)
+certbot_domains: []
+certbot_email: ""       # set in group_vars or host_vars
+
+# Zabbix agent
+zabbix_agent_enabled: false
+zabbix_server_tailscale_ip: ""
+zabbix_agent_version: "6.4"

@@ -1,0 +1,36 @@
+---
+# roles/ovh-haproxy/tasks/main.yml
+# Configures the GRA8 edge VPS: HAProxy, Redis, Tailscale, WireGuard, Certbot, Zabbix agent.
+
+- name: Install HAProxy and supporting packages
+  ansible.builtin.apt:
+    name:
+      - haproxy
+      - redis-server
+      - wireguard
+      - wireguard-tools
+      - snapd
+      - certbot
+    state: present
+    update_cache: true
+
+- name: Configure HAProxy
+  ansible.builtin.include_tasks: haproxy.yml
+
+- name: Configure Redis
+  ansible.builtin.include_tasks: redis.yml
+
+- name: Configure WireGuard
+  ansible.builtin.include_tasks: wireguard.yml
+
+- name: Configure Tailscale
+  ansible.builtin.include_tasks: tailscale.yml
+  when: tailscale_enabled | bool
+
+- name: Configure Certbot (snap)
+  ansible.builtin.include_tasks: certbot.yml
+  when: certbot_domains | length > 0
+
+- name: Configure Zabbix agent
+  ansible.builtin.include_tasks: zabbix.yml
+  when: zabbix_agent_enabled | bool

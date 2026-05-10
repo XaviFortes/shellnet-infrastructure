@@ -1,3 +1,147 @@
 ---
-# tasks/main.yml — proxmox-baseline
-# Tasks not yet implemented.
+# roles/proxmox-baseline/tasks/main.yml
+# Configures a Proxmox VE node: repos, updates, IOMMU, basic hardening.
+
+# ── Repository management ─────────────────────────────────────────────────────
+
+- name: Remove PVE enterprise subscription repo
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-enterprise.list
+    state: absent
+  when: pve_remove_enterprise_repo | bool
+  notify: Update apt cache
+
+- name: Remove Ceph enterprise repo
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/ceph.list
+    state: absent
+  when: pve_remove_ceph_enterprise_repo | bool
+  notify: Update apt cache
+
+- name: Add PVE no-subscription (community) repo
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/pve-no-subscription.list
+    content: |
+      deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription
+    owner: root
+    group: root
+    mode: "0644"
+  when: pve_add_no_subscription_repo | bool
+  notify: Update apt cache
+
+- name: Add Ceph no-subscription repo
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/ceph-no-subscription.list
+    content: |
+      deb http://download.proxmox.com/debian/ceph-reef bookworm no-subscription
+    owner: root
+    group: root
+    mode: "0644"
+  when: pve_add_no_subscription_repo | bool
+  notify: Update apt cache
+
+# ── Full upgrade ──────────────────────────────────────────────────────────────
+
+- name: Run full-upgrade
+  ansible.builtin.apt:
+    upgrade: full
+    update_cache: true
+  when: pve_full_upgrade | bool
+
+# ── Proxmox PVE-specific packages ─────────────────────────────────────────────
+
+- name: Install useful PVE management tools
+  ansible.builtin.apt:
+    name:
+      - ethtool
+      - iotop
+      - iftop
+      - lm-sensors
+      - smartmontools
+      - nvme-cli
+      - pve-headers
+    state: present
+
+# ── Subscription nag removal ──────────────────────────────────────────────────
+
+- name: Remove PVE subscription nag from web UI
+  ansible.builtin.replace:
+    path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+    regexp: "Ext\\.Msg\\.show\\(\\{\\s*title: gettext\\('No valid subscription'\\)"
+    replace: "void({"
+  notify: Restart pveproxy
+
+# ── IOMMU / passthrough ───────────────────────────────────────────────────────
+
+- name: Enable IOMMU in GRUB (AMD)
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: "^GRUB_CMDLINE_LINUX_DEFAULT="
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_iommu=on iommu=pt"'
+  when:
+    - pve_iommu_enabled | bool
+    - pve_iommu_cpu_vendor == "amd"
+  notify: Reload grub
+
+- name: Enable IOMMU in GRUB (Intel)
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: "^GRUB_CMDLINE_LINUX_DEFAULT="
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt"'
+  when:
+    - pve_iommu_enabled | bool
+    - pve_iommu_cpu_vendor == "intel"
+  notify: Reload grub
+
+- name: Load VFIO kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/vfio.conf
+    content: |
+      vfio
+      vfio_iommu_type1
+      vfio_pci
+    mode: "0644"
+  when: pve_iommu_enabled | bool
+
+# ── Postfix / mail alerts ──────────────────────────────────────────────────────
+
+- name: Configure Postfix for SMTP relay (when enabled)
+  ansible.builtin.template:
+    src: postfix_main.cf.j2
+    dest: /etc/postfix/main.cf
+    owner: root
+    group: root
+    mode: "0644"
+  when: pve_smtp_enabled | bool
+  notify:
+    - name: Restart postfix
+      ansible.builtin.service:
+        name: postfix
+        state: restarted
+
+# ── Kernel hardening (sysctl) ─────────────────────────────────────────────────
+
+- name: Apply PVE sysctl hardening
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - { name: "net.ipv4.ip_forward", value: "1" }            # needed for VM networking
+    - { name: "net.ipv6.conf.all.forwarding", value: "1" }
+    - { name: "kernel.dmesg_restrict", value: "1" }
+    - { name: "net.core.somaxconn", value: "4096" }
+
+# ── Ensure pve services are running ───────────────────────────────────────────
+
+- name: Ensure critical PVE services are enabled
+  ansible.builtin.service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - pve-cluster
+    - pvedaemon
+    - pveproxy
+    - pvestatd

@@ -1,0 +1,17 @@
+# /etc/postfix/main.cf — managed by Ansible
+# Only deployed when pve_smtp_enabled: true
+
+myhostname = {{ inventory_hostname }}
+myorigin = /etc/mailname
+inet_interfaces = loopback-only
+inet_protocols = ipv4
+mydestination = localhost
+
+relayhost = [{{ pve_smtp_server }}]:{{ pve_smtp_port }}
+smtp_use_tls = yes
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+
+sender_canonical_maps = static:{{ pve_smtp_from }}
+smtp_header_checks = pcre:/etc/postfix/header_checks

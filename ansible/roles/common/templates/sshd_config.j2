@@ -1,0 +1,30 @@
+# /etc/ssh/sshd_config.d/99-homelab-hardening.conf
+# Managed by Ansible — do not edit manually.
+
+Port {{ ssh_port }}
+
+# Authentication
+PermitRootLogin {{ ssh_permit_root_login }}
+PasswordAuthentication {{ ssh_password_auth }}
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+MaxAuthTries {{ ssh_max_auth_tries }}
+
+# Only allow specific groups if configured
+{% if ssh_allow_groups %}
+AllowGroups {{ ssh_allow_groups }}
+{% endif %}
+
+# Disable unused auth methods
+KerberosAuthentication no
+GSSAPIAuthentication no
+UsePAM yes
+
+# Hardening
+X11Forwarding no
+AllowAgentForwarding no
+AllowTcpForwarding no
+PermitTunnel no
+PrintLastLog yes
+Banner none

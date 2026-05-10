@@ -1,0 +1,13 @@
+# /etc/wireguard/{{ wireguard_interface }}.conf — managed by Ansible
+
+[Interface]
+Address = {{ wireguard_ip }}
+ListenPort = {{ wireguard_listen_port }}
+PrivateKey = {{ vault_wireguard_private_key }}
+
+# PostUp/PostDown for NAT (if acting as hub/gateway)
+PostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+# Peers are managed separately (not in this template to avoid overwriting manual peer entries)
+# Add peers below or manage via wg set / wg-quick

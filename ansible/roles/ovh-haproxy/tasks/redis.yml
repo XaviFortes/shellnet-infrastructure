@@ -1,0 +1,17 @@
+---
+# roles/ovh-haproxy/tasks/redis.yml
+
+- name: Deploy redis.conf
+  ansible.builtin.template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: redis
+    group: redis
+    mode: "0640"
+  notify: Restart redis
+
+- name: Enable and start Redis
+  ansible.builtin.service:
+    name: redis-server
+    enabled: true
+    state: started

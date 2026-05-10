@@ -1,0 +1,42 @@
+---
+# roles/k3s-node/tasks/longhorn.yml
+# Prepare an extra block device for Longhorn distributed storage.
+
+- name: Check if Longhorn disk device exists
+  ansible.builtin.stat:
+    path: "{{ longhorn_node_disk_path }}"
+  register: longhorn_disk
+
+- name: Assert Longhorn disk device is present
+  ansible.builtin.assert:
+    that: longhorn_disk.stat.exists
+    fail_msg: >
+      Longhorn disk {{ longhorn_node_disk_path }} not found on {{ inventory_hostname }}.
+      Set longhorn_extra_disk: false or provision the disk first.
+
+- name: Create Longhorn data directory
+  ansible.builtin.file:
+    path: "{{ longhorn_data_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check if Longhorn disk is already formatted
+  ansible.builtin.command: blkid -s TYPE -o value {{ longhorn_node_disk_path }}
+  register: longhorn_blkid
+  changed_when: false
+  failed_when: false
+
+- name: Format Longhorn disk as ext4
+  ansible.builtin.command: mkfs.ext4 -L longhorn {{ longhorn_node_disk_path }}
+  when: longhorn_blkid.stdout == ""
+  changed_when: true
+
+- name: Mount Longhorn disk persistently
+  ansible.posix.mount:
+    path: "{{ longhorn_data_path }}"
+    src: "LABEL=longhorn"
+    fstype: ext4
+    opts: defaults,noatime
+    state: mounted

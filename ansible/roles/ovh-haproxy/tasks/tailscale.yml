@@ -1,0 +1,32 @@
+---
+# roles/ovh-haproxy/tasks/tailscale.yml
+
+- name: Check if Tailscale is already installed
+  ansible.builtin.stat:
+    path: /usr/bin/tailscale
+  register: tailscale_binary
+
+- name: Install Tailscale via official script
+  ansible.builtin.shell: |
+    curl -fsSL https://tailscale.com/install.sh | sh
+  args:
+    creates: /usr/bin/tailscale
+
+- name: Enable and start tailscaled
+  ansible.builtin.service:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Authenticate Tailscale node
+  ansible.builtin.command: >
+    tailscale up
+    --authkey="{{ vault_tailscale_auth_key }}"
+    {% if tailscale_exit_node %}--advertise-exit-node{% endif %}
+    --accept-routes
+    --ssh
+  register: tailscale_up
+  changed_when: "'already authenticated' not in tailscale_up.stderr"
+  failed_when:
+    - tailscale_up.rc != 0
+    - "'already authenticated' not in tailscale_up.stderr"

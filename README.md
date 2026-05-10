@@ -234,13 +234,36 @@ ansible-playbook -i ansible/inventories/almond ansible/playbooks/site.yml --chec
 
 ## CI/CD
 
-Every PR runs:
+### Pipeline overview
+
+| Event | Jobs |
+|---|---|
+| Pull request | Secret scan → Validate → Plan (output posted as PR comment) |
+| Push to `main` | Secret scan → Validate → Plan → **Apply** (gated by `production` environment) |
+
+**Jobs:**
 
 1. `scripts/validate.sh` — scans for secret leaks
-2. `terragrunt validate` — syntax checks all modules (uses `SOPS_AGE_KEY` Actions secret)
-3. `ansible-lint` — lints all playbooks
+2. `terragrunt validate` — syntax + format checks all modules
+3. `terraform plan` — runs across all stacks; PR comment shows diff
+4. `terraform apply` — `main` only, pauses for manual approval via GitHub Environment
+5. `ansible-lint` — lints all playbooks
 
-To set up CI on a fork, add `SOPS_AGE_KEY` to GitHub Actions secrets (Settings → Secrets → Actions). The value is the full contents of your `~/.config/sops/age/keys.txt`.
+### Required GitHub Actions secrets
+
+| Secret | Used by | Notes |
+|---|---|---|
+| `SOPS_AGE_KEY` | validate, plan, apply | Full contents of your `keys.txt` (private + public) |
+| `B2_ACCESS_KEY_ID` | validate, plan | **Read-only** B2 application key |
+| `B2_SECRET_KEY` | validate, plan | **Read-only** B2 application key secret |
+| `B2_RW_ACCESS_KEY_ID` | apply | **Read-write** B2 application key |
+| `B2_RW_SECRET_KEY` | apply | **Read-write** B2 application key secret |
+
+Create application keys in the Backblaze B2 console: one read-only (for validate/plan) and one read-write (for apply, used only after manual approval).
+
+### Required GitHub Environment
+
+Create a `production` environment under **Settings → Environments** and add at least one required reviewer. The apply job will pause until approved.
 
 ---
 
@@ -248,8 +271,8 @@ To set up CI on a fork, add `SOPS_AGE_KEY` to GitHub Actions secrets (Settings �
 
 | Tool | Version |
 |---|---|
-| OpenTofu | >= 1.7 |
-| Terragrunt | >= 0.58 |
+| OpenTofu | >= 1.11 |
+| Terragrunt | >= 1.0 |
 | Ansible | >= 2.16 |
 | SOPS | >= 3.8 |
 | age | >= 1.1 |

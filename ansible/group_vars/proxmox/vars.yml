@@ -1,0 +1,26 @@
+---
+# group_vars/proxmox/vars.yml
+# Non-sensitive variables for all Proxmox VE nodes.
+
+# PVE repo management
+pve_version: "8"
+pve_remove_enterprise_repo: true
+pve_add_no_subscription_repo: true
+pve_remove_ceph_enterprise_repo: true
+pve_full_upgrade: true
+
+# IOMMU — enabled on almond (Ryzen 7 5800X) and peanut (Ryzen 5 3600)
+# Override per-host in host_vars if needed
+pve_iommu_enabled: true
+pve_iommu_cpu_vendor: "amd"
+
+# SSH: Proxmox nodes are managed as root directly
+ssh_permit_root_login: "yes"  # PVE requires root SSH for cluster operations
+ssh_password_auth: "no"
+
+# Packages added on top of common_packages
+pve_extra_packages:
+  - ethtool
+  - iotop
+  - lm-sensors
+  - smartmontools

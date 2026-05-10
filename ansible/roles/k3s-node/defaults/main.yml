@@ -1,0 +1,43 @@
+---
+# roles/k3s-node/defaults/main.yml
+# All values can be overridden in group_vars/ovh_k3s/vars.yml
+
+ovh_k3s_version: "v1.33.5+k3s1"
+ovh_k3s_cluster_name: "ovh-k3s-ha"
+
+# Role of this node — set per-host in inventory: "server" or "agent"
+k3s_role: "server"
+
+# The first server to bootstrap. Set in group_vars or host_vars.
+# k3s_init_server: "vps-6b58f204"
+
+# CIDRs
+ovh_pod_cidr: "10.42.0.0/16"
+ovh_service_cidr: "10.43.0.0/16"
+ovh_flannel_backend: "vxlan"
+
+# Paths
+k3s_config_dir: /etc/rancher/k3s
+k3s_data_dir: /var/lib/rancher/k3s
+
+# kubeconfig permissions
+k3s_kubeconfig_mode: "0644"
+
+# Extra server args appended to the k3s server command
+k3s_server_extra_args: ""
+
+# Extra agent args
+k3s_agent_extra_args: ""
+
+# Disable components not needed on OVH VPS
+k3s_disable_components:
+  - traefik         # ArgoCD manages ingress
+  - servicelb       # using MetalLB / cloud LB
+
+# Node labels applied after join — list of "key=value" strings
+k3s_node_labels: []
+
+# Longhorn
+longhorn_extra_disk: false
+longhorn_data_path: "/var/lib/longhorn"
+longhorn_node_disk_path: "/dev/sdc"

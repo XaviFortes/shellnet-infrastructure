@@ -1,0 +1,14 @@
+# /etc/fail2ban/jail.local
+# Managed by Ansible — do not edit manually.
+
+[DEFAULT]
+bantime  = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+backend  = systemd
+
+[sshd]
+enabled = true
+port    = {{ ssh_port }}
+filter  = sshd
+logpath = %(sshd_log)s

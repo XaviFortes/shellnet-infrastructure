@@ -1,0 +1,11 @@
+---
+# group_vars/k3s/vars.yml
+# Non-sensitive variables for local K3s nodes (vms on almond/peanut).
+# OVH K3s cluster variables are in group_vars/ovh_k3s/vars.yml.
+
+# These VMs run K3s as agents joining the OVH cluster via WireGuard
+k3s_role: "agent"
+
+# SSH: VMs use a non-root user defined in vault
+ssh_permit_root_login: "no"
+ssh_password_auth: "no"

@@ -1,0 +1,18 @@
+# /etc/redis/redis.conf — managed by Ansible
+
+bind {{ redis_bind }}
+port {{ redis_port }}
+protected-mode yes
+
+{% if vault_redis_password | default('') != '' %}
+requirepass {{ vault_redis_password }}
+{% endif %}
+
+maxmemory {{ redis_maxmemory }}
+maxmemory-policy {{ redis_maxmemory_policy }}
+
+# Persistence — disabled (cache-only use case)
+save ""
+
+loglevel notice
+logfile /var/log/redis/redis-server.log

@@ -1,0 +1,24 @@
+---
+# roles/ovh-haproxy/tasks/wireguard.yml
+
+- name: Deploy WireGuard interface config
+  ansible.builtin.template:
+    src: wireguard.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart wg-quick
+
+- name: Enable and start WireGuard
+  ansible.builtin.service:
+    name: "wg-quick@{{ wireguard_interface }}"
+    enabled: true
+    state: started
+
+- name: Enable IP forwarding for WireGuard
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    reload: true

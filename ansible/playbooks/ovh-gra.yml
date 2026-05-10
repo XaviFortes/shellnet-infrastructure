@@ -1,0 +1,10 @@
+---
+# playbooks/ovh-gra.yml
+# Configures the Gravelines edge VPS: HAProxy, Redis, WireGuard, Tailscale, Certbot.
+
+- name: Apply baseline to OVH GRA node
+  hosts: ovh_gra
+  gather_facts: true
+  roles:
+    - role: common
+    - role: ovh-haproxy

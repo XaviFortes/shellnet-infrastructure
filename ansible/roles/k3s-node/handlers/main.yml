@@ -1,0 +1,14 @@
+---
+# roles/k3s-node/handlers/main.yml
+
+- name: Restart k3s server
+  ansible.builtin.service:
+    name: k3s
+    state: restarted
+  when: k3s_role == "server"
+
+- name: Restart k3s agent
+  ansible.builtin.service:
+    name: k3s-agent
+    state: restarted
+  when: k3s_role == "agent"

@@ -1,0 +1,15 @@
+---
+# roles/proxmox-baseline/handlers/main.yml
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Restart pveproxy
+  ansible.builtin.service:
+    name: pveproxy
+    state: restarted
+
+- name: Reload grub
+  ansible.builtin.command: update-grub
+  changed_when: true

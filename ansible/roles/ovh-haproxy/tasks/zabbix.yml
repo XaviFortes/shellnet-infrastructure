@@ -1,0 +1,38 @@
+---
+# roles/ovh-haproxy/tasks/zabbix.yml
+
+- name: Download Zabbix repo package
+  ansible.builtin.get_url:
+    url: "https://repo.zabbix.com/zabbix/{{ zabbix_agent_version }}/debian/pool/main/z/zabbix-release/zabbix-release_{{ zabbix_agent_version }}-1+debian12_all.deb"
+    dest: /tmp/zabbix-release.deb
+    mode: "0644"
+
+- name: Install Zabbix repo package
+  ansible.builtin.apt:
+    deb: /tmp/zabbix-release.deb
+    state: present
+
+- name: Install Zabbix agent2
+  ansible.builtin.apt:
+    name: zabbix-agent2
+    state: present
+    update_cache: true
+
+- name: Configure Zabbix agent2
+  ansible.builtin.template:
+    src: zabbix_agent2.conf.j2
+    dest: /etc/zabbix/zabbix_agent2.conf
+    owner: zabbix
+    group: zabbix
+    mode: "0640"
+  notify:
+    - name: Restart zabbix-agent2
+      ansible.builtin.service:
+        name: zabbix-agent2
+        state: restarted
+
+- name: Enable and start Zabbix agent2
+  ansible.builtin.service:
+    name: zabbix-agent2
+    enabled: true
+    state: started
