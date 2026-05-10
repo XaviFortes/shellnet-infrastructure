@@ -26,7 +26,11 @@ spec:
         # ── GitHub App authentication ──────────────────────────────────────────
         # Scope: entire user account — runners are available to all your repos.
         # Set githubConfigUrl to your GitHub user URL (not a specific repo).
-        githubConfigUrl: "https://github.com/XaviFortes"
+        # Scope: single repo. Personal GitHub accounts do not have org-level
+        # runner registration APIs — use repo-level URL instead.
+        # To cover more repos, duplicate the runner scale set with a different
+        # releaseName per repo, or move to a GitHub Org for account-wide runners.
+        githubConfigUrl: "https://github.com/XaviFortes/shellnet-infrastructure"
 
         githubConfigSecret: arc-github-app-secret   # created by Ansible/SOPS
 
@@ -44,7 +48,7 @@ spec:
         runnerGroup: "Default"
 
         # ── Scaling ───────────────────────────────────────────────────────────
-        minRunners: 0          # scale to zero when idle
+        minRunners: 1          # keep 1 warm for debugging; set back to 0 once stable
         maxRunners: 4          # max concurrent jobs; tune to your cluster size
 
         # ── Runner pod spec ───────────────────────────────────────────────────

@@ -47,3 +47,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - Replace=true          # needed for large CRDs that exceed annotation size limit
