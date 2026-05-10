@@ -31,6 +31,8 @@ jobs:
     needs: secret-scan
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
 
