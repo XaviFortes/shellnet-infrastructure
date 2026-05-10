@@ -104,7 +104,8 @@ remote_state {
 
     # For Minio or other S3-compatible stores, set this to your endpoint.
     # Remove or comment out for real AWS S3.
-    endpoint                    = local.secrets.state_endpoint
+    # Ensure https:// scheme is present — some vaults store the bare hostname.
+    endpoint                    = startswith(local.secrets.state_endpoint, "http") ? local.secrets.state_endpoint : "https://${local.secrets.state_endpoint}"
     skip_credentials_validation = true
     skip_metadata_api_check     = true
     skip_region_validation      = true

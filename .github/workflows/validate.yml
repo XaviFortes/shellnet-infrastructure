@@ -13,7 +13,7 @@ jobs:
     name: Secret Leak Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # full history for git grep
 
@@ -34,7 +34,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@v1
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: secret-scan
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
