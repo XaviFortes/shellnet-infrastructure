@@ -111,6 +111,12 @@ remote_state {
     skip_region_validation      = true
     force_path_style            = true
 
+    # Backblaze B2 does not implement GetBucketAcl or GetBucketVersioning.
+    # These flags prevent Terragrunt from calling those unsupported APIs.
+    skip_bucket_root_access           = true
+    skip_bucket_ssencryption_check    = true
+    skip_bucket_versioning_check      = true
+
     # Backblaze B2 does not support DynamoDB-style locking or OpenTofu's
     # native file-based locking (use_lockfile). For a solo operator this is
     # acceptable. If you add CI runners, coordinate manually or switch to an
