@@ -10,6 +10,7 @@ env:
   TOFU_VERSION: "1.11.1"
   TERRAGRUNT_VERSION: "1.0.4"
   SOPS_VERSION: "3.9.4"
+  AGE_VERSION: "1.2.1"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -72,7 +73,8 @@ jobs:
             sudo chmod +x /usr/local/bin/sops
           fi
           if ! command -v age-keygen &>/dev/null; then
-            sudo apt-get install -y age
+            curl -sL "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz" \
+              | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
           fi
           echo "tofu:       $(tofu version | head -1)"
           echo "terragrunt: $(terragrunt --version)"
@@ -105,6 +107,11 @@ jobs:
 
       - name: Install ansible-lint and community.sops
         run: |
+          # Runner image has python3 but no pip3 — bootstrap it
+          if ! command -v pip3 &>/dev/null; then
+            python3 -m ensurepip --upgrade 2>/dev/null || \
+              curl -sS https://bootstrap.pypa.io/get-pip.py | python3
+          fi
           pip3 install --quiet --upgrade ansible-lint
           ansible-galaxy collection install community.sops --upgrade
 
