@@ -48,7 +48,7 @@ spec:
         runnerGroup: "Default"
 
         # ── Scaling ───────────────────────────────────────────────────────────
-        minRunners: 1          # keep 1 warm for debugging; set back to 0 once stable
+        minRunners: 0          # on-demand only; JIT tokens are per-job so idle runners cause failures
         maxRunners: 4          # max concurrent jobs; tune to your cluster size
 
         # ── Runner pod spec ───────────────────────────────────────────────────
