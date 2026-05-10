@@ -87,6 +87,12 @@ remote_state {
     if_exists = "overwrite_terragrunt"
   }
 
+  # Terragrunt-level flags — consumed by Terragrunt, NOT written to backend.tf.
+  # Backblaze B2 does not implement GetBucketAcl, GetBucketEncryption,
+  # GetBucketVersioning, GetBucketPolicy, or STS. Skip all unsupported calls.
+  disable_init          = false
+  disable_bucket_update = true
+
   config = {
     # ---------------------------------------------------------------------------
     # SENSITIVE VALUES — pulled from SOPS-encrypted secrets, never hardcoded.
@@ -103,7 +109,6 @@ remote_state {
     region = local.node_vars.locals.region
 
     # For Minio or other S3-compatible stores, set this to your endpoint.
-    # Remove or comment out for real AWS S3.
     # Ensure https:// scheme is present — some vaults store the bare hostname.
     endpoint                    = startswith(local.secrets.state_endpoint, "http") ? local.secrets.state_endpoint : "https://${local.secrets.state_endpoint}"
     skip_credentials_validation = true
@@ -111,23 +116,14 @@ remote_state {
     skip_region_validation      = true
     force_path_style            = true
 
-    # Backblaze B2 does not implement GetBucketAcl, GetBucketEncryption,
-    # GetBucketVersioning, GetBucketPolicy (TLS check), or STS AssumeRole.
-    # Skip all unsupported API calls to avoid 501 / DNS errors.
-    skip_bucket_root_access        = true
-    skip_bucket_ssencryption_check = true
-    skip_bucket_versioning_check   = true
-    skip_bucket_enforced_tls       = true
-    skip_requesting_account_id     = true
+    # Backblaze B2 does not implement these S3 APIs — skip the checks.
+    # These are valid OpenTofu S3 backend arguments (not Terragrunt-only).
+    skip_bucket_root_access    = true
+    skip_bucket_enforced_tls   = true
+    skip_requesting_account_id = true
 
-    # Prevent Terragrunt from trying to enable SSE / public-access-blocking
-    # on the B2 bucket — those APIs are not supported and would fail.
-    disable_bucket_update = true
-
-    # Backblaze B2 does not support DynamoDB-style locking or OpenTofu's
-    # native file-based locking (use_lockfile). For a solo operator this is
-    # acceptable. If you add CI runners, coordinate manually or switch to an
-    # S3-compatible store that supports locking (e.g. Cloudflare R2 + Workers).
+    # Backblaze B2 does not support OpenTofu's native file-based locking.
+    # For a solo operator this is acceptable.
     use_lockfile = false
   }
 }
