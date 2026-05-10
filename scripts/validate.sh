@@ -43,6 +43,7 @@ while IFS= read -r -d '' file; do
 done < <(find . \
   -not -path './.git/*' \
   -not -path './.terragrunt-cache/*' \
+  -not -name '.sops.yaml' \
   \( -name '*.sops.json' -o -name '*.sops.yml' -o -name '*.sops.yaml' \) \
   -print0 2>/dev/null)
 
@@ -59,9 +60,8 @@ SECRET_PATTERNS=(
   'api_token\s*=\s*"[^"]+'
   'secret_key\s*=\s*"[^"]+'
   'access_key\s*=\s*"[^"]+'
-  'PRIVATE KEY'
-  'BEGIN RSA'
-  'BEGIN OPENSSH'
+  '-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY'
+  'AGE-SECRET-KEY-1'
 )
 
 for pattern in "${SECRET_PATTERNS[@]}"; do
