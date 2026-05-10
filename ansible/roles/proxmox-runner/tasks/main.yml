@@ -25,8 +25,52 @@
       - jq
       - git
       - sudo
+      - unzip
+      - openssl
     state: present
     update_cache: true
+
+- name: Install OpenTofu
+  ansible.builtin.shell: |
+    set -e
+    if ! command -v tofu &>/dev/null || [ "$(tofu version | head -1 | grep -oP '\d+\.\d+\.\d+')" != "{{ tofu_version }}" ]; then
+      curl -sL "https://github.com/opentofu/opentofu/releases/download/v{{ tofu_version }}/tofu_{{ tofu_version }}_linux_amd64.tar.gz" \
+        | tar -xz -C /usr/local/bin tofu
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Install Terragrunt
+  ansible.builtin.shell: |
+    set -e
+    if ! command -v terragrunt &>/dev/null || [ "$(terragrunt --version | grep -oP '\d+\.\d+\.\d+')" != "{{ terragrunt_version }}" ]; then
+      curl -sLo /usr/local/bin/terragrunt \
+        "https://github.com/gruntwork-io/terragrunt/releases/download/v{{ terragrunt_version }}/terragrunt_linux_amd64"
+      chmod +x /usr/local/bin/terragrunt
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Install SOPS
+  ansible.builtin.shell: |
+    set -e
+    if ! command -v sops &>/dev/null || [ "$(sops --version | grep -oP '\d+\.\d+\.\d+')" != "{{ sops_version }}" ]; then
+      curl -sLo /usr/local/bin/sops \
+        "https://github.com/getsops/sops/releases/download/v{{ sops_version }}/sops-v{{ sops_version }}.linux.amd64"
+      chmod +x /usr/local/bin/sops
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Install age
+  ansible.builtin.shell: |
+    set -e
+    if ! command -v age-keygen &>/dev/null || [ "$(age-keygen --version | grep -oP '\d+\.\d+\.\d+')" != "{{ age_version }}" ]; then
+      curl -sL "https://github.com/FiloSottile/age/releases/download/v{{ age_version }}/age-v{{ age_version }}-linux-amd64.tar.gz" \
+        | tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
+    fi
+  args:
+    executable: /bin/bash
 
 - name: Create runner user
   ansible.builtin.user:

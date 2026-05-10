@@ -19,3 +19,7 @@
     github_repo: "XaviFortes/shellnet-infrastructure"
     runner_name: "proxmox-ci-01"
     runner_labels: "homelab-proxmox,proxmox,self-hosted,linux,x64"
+    tofu_version: "1.11.1"
+    terragrunt_version: "1.0.4"
+    sops_version: "3.9.4"
+    age_version: "1.2.1"
