@@ -1,40 +1,33 @@
----
-# ansible/group_vars/all/vault.sops.yml
+#ENC[AES256_GCM,data:OdfnThGm+HGjNnr+hkdjsCI1m3RNjOxKYP+DgLU3zYrCX+2XqzQ=,iv:FZZIa57jjhMAqK3+pdaVguOFQj5/OvDSPIc/yBkOzDE=,tag:Lfg/e51zr4gthCQNWI3qKQ==,type:comment]
 #
-# THIS FILE IS ENCRYPTED WITH SOPS + AGE.
-# The decrypted content below is shown only as documentation.
-# Never commit a plaintext version of this file.
+#ENC[AES256_GCM,data:EJDcl5qA38fp8EmAm293KRMGFhL3wUIoPTYok6/mmcsL31/0IoXG,iv:WPfP+XQ/lj26XIWw4cTDAx4zFxFZK9xBXW6wuYXnXWg=,tag:ZF0PtOmrcJ1envanlwiA9g==,type:comment]
+#ENC[AES256_GCM,data:fTRHxD3ppUoXRqwR5hnWePzs/3VeSvE6RvvK8qTtYlaKToDEsu4DjHOAFNHG0E6x8pDtxi6Y,iv:lgGzc+u6JNoDqXTa35u/1FoyMJe47cssIpiK5tTnYAU=,tag:EHYnQH/BB54uCkWavRmoFw==,type:comment]
 #
-# --- How to create/edit this file ---
-#
-#   Create (first time):
-#     Create a plaintext vault.yml with your secrets, then run:
-#       ./scripts/sops-encrypt.sh ansible/group_vars/all/vault.yml
-#
-#   Edit (subsequent times):
-#       sops ansible/group_vars/all/vault.sops.yml
-#     SOPS opens your $EDITOR with decrypted content and re-encrypts on save.
-#
-#   Ansible reads this automatically via the community.sops vars plugin
-#   configured in ansible.cfg — no extra flags needed.
-#
-# --- Expected plaintext structure (DO NOT commit unencrypted) ---
-#
-# vault_default_user_password: "changeme-strong-password"
-# vault_ssh_public_key: "ssh-ed25519 AAAA..."
-# vault_monitoring_token: "prom-remote-write-token"
-#
-# --- Encrypted content (safe to commit) ---
-vault_default_user_password: ENC[AES256_GCM,data:placeholder,type:str]
-vault_ssh_public_key: ENC[AES256_GCM,data:placeholder,type:str]
-vault_monitoring_token: ENC[AES256_GCM,data:placeholder,type:str]
+#ENC[AES256_GCM,data:Q9LQAg/40xxIT2LnlXJM+19yZ8U=,iv:TwOjqx22sDAqWK+DehUHnsh/75wP9ixe3HiF1AaLSTE=,tag:MQpq1sA6213rDMXImOgD1g==,type:comment]
+#ENC[AES256_GCM,data:Cxzv1Y0bEyfYO8tot+dkzz35nY/uzL6AFJMJI6UqCLiAV+HMgA==,iv:jLx3B0qCy7HQxHaCwkwlNIRfeFvxI2NXdFhuPPqYDi4=,tag:tkpzw+UrAU6xFaD4JA/xXw==,type:comment]
+#ENC[AES256_GCM,data:YSsbgoGqwmiIgYDZO+CxXjYulq7beXXmDjV8C8RcGPJSIyeOgC7cg/TkJJBAQg==,iv:jCHXRJn+2fEoEurTgt751HNBEqBHP35iFojY0w7dBAE=,tag:ElhIYa/LnlMmjVSsYlkHpA==,type:comment]
+#ENC[AES256_GCM,data:vjfLuwVNk1la0cq17m2M1llwbvA3iFPfmeuGQ0+vUZA=,iv:q/EoltWKszMeyqKyQaAK1796UJicyPNvqGfFoClySzs=,tag:OYzwO6efCsLYmEvu+SLM/w==,type:comment]
 sops:
     age:
-        - recipient: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          enc: |
+        - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            PLACEHOLDER
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBudXRUQXdwVG91Y01QaEJW
+            eW1HMkRwV1FrVDFoaGZPTTFEZkl0R05Za2prCkovNDlCY1cvZ203TDZULytJYjNq
+            Y3NlQ2RYZ09UVUZaSFRsY0kxNTVmMXcKLS0tIHRpbStITm8wanMvNnpDSHZuRzlV
+            d1M4blZybmZnQTlneHlZL3A0UGtRWmsK/fX18F+MaytDdC1k5JRP9XQFljGSWyiE
+            PVP+S6/cswOoefaXUzkMv3KR4XKtS8UKUUB/TooDXXX2RkF9hUSR2g==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-01-01T00:00:00Z"
-    mac: ENC[AES256_GCM,data:placeholder,type:str]
-    version: 3.8.1
+          recipient: age1kttje7qaqggnssmu4a40ptm649wthp0twmd4c9jsjstkpnuptqdqp3fkc0
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA1WkZ3aVFpZUo1K2lqamsv
+            Wm9kT2VWbmQ2SEJmQUFKb245UkFTWHFHU0FrCjBmdmtGL0FZdkUyRE1sblZ5eWxO
+            ejJidDZqRCtRTnhkQ3l6QlNVQmRhUFkKLS0tIHBmc3pObFVCQ3RHKzZiNERhM3Ni
+            NWhmek9OMkl5ejUxZy8wUlEzK25OZUkKxc6kSHneoOeMLlKW9yhKiFO4sN+w27xg
+            kcGLwuHdDdUUPZADQDSN+RGTgwPUfau6fToHQKTiEyPjQBFtLzF1Og==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age15m998ttvguwq46xpz4e6yvdaaprxzucqr33t98c3mtgrlcymwgfsfew9ch
+    lastmodified: "2026-05-10T01:57:22Z"
+    mac: ENC[AES256_GCM,data:VIUKLlYhMsClowhlOtlT3nopBc38HwxlytldQPlxtWzghnGdXDeATiohNAabFP/3a3GuiHAFSLdA9nDrh7GmSvfZ+e5aNOx7NWgdVXLeUV4w+1y7cBGpXTKjTOtDMxEuVmsldT69fqGrMM3kegY9Z+O+XHxp9JQ11fULKf/HwUY=,iv:qKon+K/uH2UfnV8gKJidqBiiWauRIeGKF+MgHpil7tc=,tag:x1fmwnAHFzn5OrwbCA/IBA==,type:str]
+    unencrypted_suffix: _unencrypted
+    version: 3.13.0

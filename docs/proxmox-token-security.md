@@ -1,32 +1,28 @@
-# API Token Security — Proxmox Privilege Reduction
+# Proxmox API Token Setup
 
-## Current State (Action Required)
+## The Approach: Dedicated Least-Privilege User
 
-The `root@pam!opencode-api` token currently has **full administrator privileges** because it is owned by `root@pam`. This is equivalent to giving a CI/CD system root access to your entire Proxmox cluster.
-
-**This is a security risk for a public repo workflow.** If the token is ever leaked (e.g., via a CI log, a decryption failure, or accidental commit), an attacker has full control of both nodes.
+Rather than using a `root@pam` token (which gives full admin access to the whole cluster), I created a dedicated Proxmox-only user with a minimal role. This way if the token ever leaks, the blast radius is limited to what OpenTofu actually needs.
 
 ---
 
-## Recommended: Create a Dedicated Least-Privilege User
+## Setup Steps
 
-### Step 1 — Create a dedicated PVE user
+### 1. Create a PVE user
 
-In Proxmox UI → Datacenter → Permissions → Users → Add:
+Datacenter → Permissions → Users → Add:
 
 | Field | Value |
 |---|---|
 | User name | `opentofu` |
-| Realm | `pve` (not `pam`) |
-| Comment | IaC automation user |
+| Realm | `pve` (not `pam` — Proxmox-only, no OS-level access) |
+| Comment | IaC automation |
 
-### Step 2 — Create a Role with only what OpenTofu needs
+### 2. Create a role with only what's needed
 
 Datacenter → Permissions → Roles → Create:
 
 Role name: `TofuProvisioner`
-
-Required privileges:
 
 | Privilege | Why |
 |---|---|
@@ -39,15 +35,15 @@ Required privileges:
 | `VM.Config.Options` | Set tags, boot order, description |
 | `VM.Config.Cloudinit` | Inject cloud-init / SSH keys |
 | `VM.PowerMgmt` | Start/stop/reboot |
-| `VM.Audit` | Read VM status (for plan) |
-| `Datastore.AllocateSpace` | Write disk images to storage |
+| `VM.Audit` | Read VM status |
+| `Datastore.AllocateSpace` | Write disk images |
 | `Datastore.AllocateTemplate` | Upload/use templates |
 | `Datastore.Audit` | Read storage info |
-| `Sys.Audit` | Read node status (for plan) |
+| `Sys.Audit` | Read node status |
 
-**Intentionally excluded:** `Sys.PowerMgmt`, `Sys.Modify`, `Sys.Console`, `Permissions.Modify`, `User.Modify`, `SDN.Allocate`, `Pool.Allocate`
+Intentionally excluded: `Sys.PowerMgmt`, `Sys.Modify`, `Sys.Console`, `Permissions.Modify`, `User.Modify`, `SDN.Allocate`, `Pool.Allocate`
 
-### Step 3 — Assign the role
+### 3. Assign the role
 
 Datacenter → Permissions → Add → User Permission:
 
@@ -58,7 +54,7 @@ Datacenter → Permissions → Add → User Permission:
 | Role | `TofuProvisioner` |
 | Propagate | ✓ |
 
-### Step 4 — Create the API token
+### 4. Create the API token
 
 Datacenter → Permissions → API Tokens → Add:
 
@@ -66,34 +62,35 @@ Datacenter → Permissions → API Tokens → Add:
 |---|---|
 | User | `opentofu@pve` |
 | Token ID | `homelab-iac` |
-| Privilege Separation | ✓ (enabled — token cannot exceed user's own privileges) |
+| Privilege Separation | ✓ |
 
-Update your `secrets.sops.json`:
+**Note on privilege separation:** with `privsep=1` enabled, the token itself needs its own ACL entry — it doesn't inherit from the user automatically. Add an API Token Permission at `/` with role `TofuProvisioner` pointing to `opentofu@pve!homelab-iac`.
+
+The token value goes into `secrets.sops.json` as:
 ```json
-"proxmox_api_token": "opentofu@pve!homelab-iac=<new-token-value>"
+"proxmox_api_token": "opentofu@pve!homelab-iac=<token-value>"
 ```
-
-### Step 5 — Revoke the old token
-
-Datacenter → Permissions → API Tokens → select `root@pam!opencode-api` → Remove.
 
 ---
 
-## Why `pve` realm instead of `pam`?
+## Why `pve` Realm, Not `pam`?
 
-- `pam` = Linux PAM — the user exists at the OS level. A compromised token could potentially be leveraged for SSH.
-- `pve` = Proxmox-only — the user exists only within the Proxmox permission system. No OS-level access.
+- `pam` = Linux PAM user. Exists at the OS level. A leaked token could potentially be leveraged for SSH access.
+- `pve` = Proxmox-only user. No shell, no OS-level access. Contained within the Proxmox permission system.
+
+---
+
+## What the Token Can't Do
+
+Feature flags on LXCs (keyctl, fuse, nesting) require `root@pam` to modify. The `TofuProvisioner` role will always get a 403 on those. That's fine — they're added to `ignore_changes` in the proxmox-lxc module so Tofu doesn't try.
 
 ---
 
 ## Token Storage
 
-The token value lives **only** in:
-1. `infrastructure/tofu/live/*/secrets.sops.json` — encrypted with Age, safe to commit
-2. GitHub Actions secret `SOPS_AGE_KEY` — the age private key that can decrypt it
-3. Your local `~/.config/sops/age/keys.txt` — never committed
+The token lives only in:
+1. `infrastructure/tofu/live/*/secrets.sops.json` — Age-encrypted, safe to commit
+2. GitHub Actions secret `SOPS_AGE_KEY` — the age private key that decrypts it at CI time
+3. `~/.config/sops/age/keys.txt` locally — never committed
 
-It is **never** in:
-- `.tfvars` files
-- Environment variables in CI logs
-- Plaintext anywhere in this repo
+It is never in plaintext anywhere in this repo.
