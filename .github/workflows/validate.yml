@@ -107,16 +107,23 @@ jobs:
 
       - name: Install ansible-lint and community.sops
         run: |
-          # Runner image has python3 but no pip3 — bootstrap it
-          if ! command -v pip3 &>/dev/null; then
-            python3 -m ensurepip --upgrade 2>/dev/null || \
-              curl -sS https://bootstrap.pypa.io/get-pip.py | python3
+          # Ubuntu 24.04 uses PEP 668 externally-managed Python — use pipx
+          if ! command -v pipx &>/dev/null; then
+            sudo apt-get install -y pipx
+            pipx ensurepath
           fi
-          pip3 install --quiet --upgrade ansible-lint
+          if ! command -v ansible-lint &>/dev/null; then
+            pipx install ansible-lint
+          fi
+          # ansible-galaxy needs ansible installed alongside ansible-lint
+          pipx inject ansible-lint ansible 2>/dev/null || true
+          export PATH="$HOME/.local/bin:$PATH"
           ansible-galaxy collection install community.sops --upgrade
 
       - name: Run ansible-lint
-        run: ansible-lint
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-lint
         working-directory: ansible
 
   # ---------------------------------------------------------------------------
@@ -161,19 +168,19 @@ jobs:
         id: plan
         run: |
           set +e
-          OUTPUT=$(terragrunt run --all plan --non-interactive 2>&1)
-          EXIT_CODE=$?
+          # Stream output live (visible in Actions log) and capture to file simultaneously
+          terragrunt run --all plan --non-interactive 2>&1 | tee /tmp/plan_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
           # Truncate to last 60000 chars to stay within GitHub comment limits
+          OUTPUT=$(cat /tmp/plan_output.txt)
           if [ ${#OUTPUT} -gt 60000 ]; then
             OUTPUT="...(truncated — see Actions log for full output)...${OUTPUT: -60000}"
+            printf '%s' "$OUTPUT" > /tmp/plan_output.txt
           fi
 
-          # Write to file to preserve newlines through env var boundary
-          printf '%s' "$OUTPUT" > /tmp/plan_output.txt
           echo "Plan exit code: ${EXIT_CODE}"
-          cat /tmp/plan_output.txt
           exit $EXIT_CODE
         working-directory: infrastructure/tofu/live
 
