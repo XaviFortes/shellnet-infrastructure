@@ -377,7 +377,7 @@ jobs:
       - name: Terragrunt apply (OVH stacks)
         run: |
           for dir in ovh ovh-gra; do
-            (cd "$dir" && terragrunt run --all apply --non-interactive --auto-approve)
+            (cd "$dir" && terragrunt run --all apply --non-interactive -- -auto-approve)
           done
         working-directory: infrastructure/tofu/live
 
@@ -416,9 +416,9 @@ jobs:
               | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
           fi
 
-      - name: Terragrunt apply (Proxmox stacks)
+       - name: Terragrunt apply (Proxmox stacks)
         run: |
           for dir in peanut almond; do
-            (cd "$dir" && terragrunt run --all apply --non-interactive --auto-approve)
+            (cd "$dir" && terragrunt run --all apply --non-interactive -- -auto-approve)
           done
         working-directory: infrastructure/tofu/live
