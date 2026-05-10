@@ -1,0 +1,91 @@
+---
+# kubernetes/arc/runners/argocd-app.yaml
+# ArgoCD Application that installs the runner scale set.
+# Runners are ephemeral: each job gets a fresh pod that registers,
+# runs the job, then deletes itself. Scale is 0 when idle.
+#
+# Scope: user-level (covers ALL repositories under your GitHub account).
+# Any repo can use these runners by setting:
+#   runs-on: homelab   # or whatever runnerScaleSetName you choose
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-runners
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"   # deploy after controller
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/actions/actions-runner-controller-charts
+    chart: gha-runner-scale-set
+    targetRevision: "0.9.3"
+    helm:
+      releaseName: homelab-runners
+      values: |
+        # ── GitHub App authentication ──────────────────────────────────────────
+        # Scope: entire user account — runners are available to all your repos.
+        # Set githubConfigUrl to your GitHub user URL (not a specific repo).
+        githubConfigUrl: "https://github.com/XaviFortes"
+
+        githubConfigSecret: arc-github-app-secret   # created by Ansible/SOPS
+
+        # Required: tell the scale set which controller to bind to.
+        controllerServiceAccount:
+          namespace: arc-systems
+          name: arc-controller-gha-rs-controller
+
+        # ── Runner label ───────────────────────────────────────────────────────
+        # Use `runs-on: homelab` in any workflow to target these runners.
+        runnerScaleSetName: "homelab"
+
+        # ── Ephemeral mode ────────────────────────────────────────────────────
+        # Each job gets a fresh pod. No state leaks between jobs.
+        runnerGroup: "Default"
+
+        # ── Scaling ───────────────────────────────────────────────────────────
+        minRunners: 0          # scale to zero when idle
+        maxRunners: 4          # max concurrent jobs; tune to your cluster size
+
+        # ── Runner pod spec ───────────────────────────────────────────────────
+        template:
+          spec:
+            containers:
+              - name: runner
+                image: ghcr.io/actions/actions-runner:latest
+                resources:
+                  requests:
+                    cpu: 500m
+                    memory: 512Mi
+                  limits:
+                    cpu: 2000m
+                    memory: 4Gi
+                env:
+                  # Tools needed for homelab IaC workflows
+                  - name: RUNNER_TOOL_CACHE
+                    value: /home/runner/_work/_tool
+                volumeMounts:
+                  - name: work
+                    mountPath: /home/runner/_work
+            # Docker-in-docker sidecar for jobs that build container images.
+            # Remove this block if you don't need it.
+            initContainers: []
+            volumes:
+              - name: work
+                emptyDir: {}
+            # Run on OVH K3s nodes specifically
+            nodeSelector:
+              node-role.kubernetes.io/vps: "true"
+            tolerations: []
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-runners
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

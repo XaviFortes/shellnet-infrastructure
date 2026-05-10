@@ -62,3 +62,15 @@ ovh_k3s_namespaces:
 fail2ban_enabled: true
 fail2ban_maxretry: 5
 fail2ban_bantime: 3600
+
+# ── Actions Runner Controller ──────────────────────────────────────────────────
+# ARC is deployed via ArgoCD (kubernetes/arc/).
+# The GitHub App secret is provisioned by:
+#   ansible-playbook -i inventories/ovh/ playbooks/arc-secret.yml
+#
+# Add these keys to group_vars/ovh_k3s/vault.sops.yml (via `sops`):
+#   vault_arc_github_app_id              — numeric App ID
+#   vault_arc_github_app_installation_id — numeric Installation ID
+#   vault_arc_github_app_private_key     — full PEM private key content
+arc_namespace: arc-runners
+arc_secret_name: arc-github-app-secret

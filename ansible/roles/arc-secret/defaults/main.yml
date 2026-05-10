@@ -1,0 +1,8 @@
+---
+# roles/arc-secret/defaults/main.yml
+
+arc_namespace: arc-runners
+arc_secret_name: arc-github-app-secret
+
+# kubeconfig path on the K3s server node
+arc_kubeconfig: /etc/rancher/k3s/k3s.yaml

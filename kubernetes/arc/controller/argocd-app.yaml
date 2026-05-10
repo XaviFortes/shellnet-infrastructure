@@ -1,0 +1,49 @@
+---
+# kubernetes/arc/controller/argocd-app.yaml
+# ArgoCD Application that installs the ARC scale-set controller via Helm.
+# The controller manages runner scale sets across all repos.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/actions/actions-runner-controller-charts
+    chart: gha-runner-scale-set-controller
+    targetRevision: "0.9.3"
+    helm:
+      releaseName: arc-controller
+      values: |
+        # The controller runs in arc-systems and manages runner scale sets
+        # in all namespaces.
+        replicaCount: 1
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+        # Metrics for Prometheus scraping (if you have kube-prometheus-stack)
+        metrics:
+          controllerManagerAddr: ":8080"
+          listenerAddr: ":8080"
+          listenerEndpoint: "/metrics"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-systems
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

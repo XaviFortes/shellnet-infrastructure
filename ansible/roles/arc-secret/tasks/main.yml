@@ -1,0 +1,68 @@
+---
+# roles/arc-secret/tasks/main.yml
+# Creates the Kubernetes Secret that ARC uses to authenticate with GitHub.
+# Values come from the SOPS vault (vault_arc_github_app_*).
+# Run this against a K3s server node (e.g. vps-6b58f204).
+
+- name: Ensure arc-runners namespace exists
+  ansible.builtin.shell:
+    cmd: |
+      k3s kubectl create namespace {{ arc_namespace }} --dry-run=client -o yaml \
+        | k3s kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ arc_kubeconfig }}"
+  changed_when: false
+
+- name: "[check mode] Secret tasks will be skipped — would write arc-github-app-secret"
+  ansible.builtin.debug:
+    msg: >
+      In apply mode this would:
+        1. Load vault from group_vars/ovh_k3s/vault.sops.yml via community.sops.load_vars
+        2. Write the GitHub App private key to /tmp/arc-github-app.pem
+        3. kubectl create secret generic {{ arc_secret_name }}
+               --from-literal=github_app_id=<vault>
+               --from-literal=github_app_installation_id=<vault>
+               --from-file=github_app_private_key=/tmp/arc-github-app.pem
+        4. Remove /tmp/arc-github-app.pem
+  when: ansible_check_mode
+
+# Explicitly load the SOPS vault using the load_vars module.
+# This is more reliable than the vars plugin (community.sops.sops) which has
+# stage/timing issues in Ansible 2.20 during playbook execution.
+- name: Load vault secrets via community.sops.load_vars
+  community.sops.load_vars:
+    file: "{{ playbook_dir }}/../group_vars/ovh_k3s/vault.sops.yml"
+    name: _arc_vault
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Write GitHub App private key to temp file
+  ansible.builtin.copy:
+    content: "{{ _arc_vault.vault_arc_github_app_private_key }}"
+    dest: /tmp/arc-github-app.pem
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Apply arc-github-app-secret to K3s
+  ansible.builtin.shell:
+    cmd: |
+      k3s kubectl create secret generic {{ arc_secret_name }} \
+        --namespace={{ arc_namespace }} \
+        --from-literal=github_app_id="{{ _arc_vault.vault_arc_github_app_id }}" \
+        --from-literal=github_app_installation_id="{{ _arc_vault.vault_arc_github_app_installation_id }}" \
+        --from-file=github_app_private_key=/tmp/arc-github-app.pem \
+        --dry-run=client -o yaml \
+      | k3s kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ arc_kubeconfig }}"
+  no_log: true
+  when: not ansible_check_mode
+  changed_when: true
+
+- name: Remove temp private key file
+  ansible.builtin.file:
+    path: /tmp/arc-github-app.pem
+    state: absent

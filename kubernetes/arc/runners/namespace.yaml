@@ -1,0 +1,9 @@
+---
+# kubernetes/arc/runners/namespace.yaml
+# Runners live in their own namespace, separate from the controller.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners
+  labels:
+    app.kubernetes.io/managed-by: argocd

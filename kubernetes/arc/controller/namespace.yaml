@@ -1,0 +1,9 @@
+---
+# kubernetes/arc/controller/namespace.yaml
+# Dedicated namespace for the ARC controller (scale-set controller).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-systems
+  labels:
+    app.kubernetes.io/managed-by: argocd
