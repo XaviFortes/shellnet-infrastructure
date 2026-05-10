@@ -11,7 +11,7 @@ dependency "vms" {
 
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
   mock_outputs = {
-    vm_ipv4_addresses = { "kubeadm-h2" = ["10.0.0.200"] }
+    vm_ipv4_addresses = { "kubeadm-h2" = [["10.0.0.200"]] }
   }
 }
 
@@ -35,7 +35,7 @@ inputs = {
   control_plane_ip = local.secrets.kubeadm_control_plane_ip
 
   worker_ips = [
-    dependency.vms.outputs.vm_ipv4_addresses["kubeadm-h2"][0],
+    dependency.vms.outputs.vm_ipv4_addresses["kubeadm-h2"][0][0],
   ]
 
   pod_cidr     = "10.244.0.0/16"
