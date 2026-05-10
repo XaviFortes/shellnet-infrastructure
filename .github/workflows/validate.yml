@@ -419,7 +419,7 @@ jobs:
               | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
           fi
 
-       - name: Terragrunt apply (Proxmox stacks)
+      - name: Terragrunt apply (Proxmox stacks)
         run: |
           for dir in peanut almond; do
             (cd "$dir" && terragrunt run --all apply --non-interactive -- -auto-approve)
