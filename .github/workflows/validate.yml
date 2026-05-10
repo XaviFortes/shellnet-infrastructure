@@ -68,7 +68,7 @@ jobs:
         working-directory: infrastructure/tofu/modules
 
       - name: Terragrunt validate (all modules)
-        run: terragrunt run-all validate --non-interactive
+        run: terragrunt run -- run-all validate --non-interactive
         working-directory: infrastructure/tofu/live
 
   # ---------------------------------------------------------------------------
