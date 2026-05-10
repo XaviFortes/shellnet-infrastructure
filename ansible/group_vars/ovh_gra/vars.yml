@@ -30,7 +30,7 @@ haproxy_frontends:
 
 # Certbot domains (no IPs, just domain names — safe to commit)
 certbot_domains:
-  - "kubeadm-deb.almond.inovexservices.com"   # expired, needs renewal
+  - "kubeadm-deb.almond.example.com"   # expired, needs renewal — replace with your actual domain
 
 # Tailscale
 tailscale_enabled: true

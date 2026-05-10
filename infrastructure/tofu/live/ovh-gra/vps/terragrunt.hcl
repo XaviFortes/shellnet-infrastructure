@@ -6,7 +6,7 @@
 #   - kubeadm API server (10.2.1.2:6443) for kubectl remote access
 #   - Minecraft server (10.2.0.5:25565 and 10.2.1.7:25565)
 #   - TrueNAS (via Tailscale 100.105.115.101) on port 51820
-#   - inovexservices.com backends (external IPs — see vault.sops.yml)
+#   - external domain backends (external IPs — see vault.sops.yml)
 #
 # Also running:
 #   - Redis (localhost only, for HAProxy/app use)
