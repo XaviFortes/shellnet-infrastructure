@@ -22,7 +22,7 @@ include "root" {
 }
 
 locals {
-  node_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  node_vars       = read_terragrunt_config(find_in_parent_folders("region.hcl"))
   _common_secrets = jsondecode(sops_decrypt_file("${get_parent_terragrunt_dir()}/common.sops.json"))
   _node_secrets   = jsondecode(sops_decrypt_file(find_in_parent_folders("secrets.sops.json")))
   secrets         = merge(local._common_secrets, local._node_secrets)

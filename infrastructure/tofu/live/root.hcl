@@ -67,10 +67,10 @@ locals {
 
   # Common tags applied to all resources
   common_tags = {
-    managed_by  = "opentofu+terragrunt"
-    node        = local.node
-    component   = local.component
-    repo        = "github.com/<YOUR_USERNAME>/homelab"
+    managed_by = "opentofu+terragrunt"
+    node       = local.node
+    component  = local.component
+    repo       = "github.com/<YOUR_USERNAME>/homelab"
   }
 }
 

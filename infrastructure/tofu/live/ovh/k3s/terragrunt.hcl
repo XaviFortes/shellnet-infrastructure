@@ -38,7 +38,7 @@ dependency "vps" {
 }
 
 locals {
-  node_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  node_vars       = read_terragrunt_config(find_in_parent_folders("region.hcl"))
   _common_secrets = jsondecode(sops_decrypt_file("${get_parent_terragrunt_dir()}/common.sops.json"))
   _node_secrets   = jsondecode(sops_decrypt_file(find_in_parent_folders("secrets.sops.json")))
   secrets         = merge(local._common_secrets, local._node_secrets)
@@ -49,9 +49,9 @@ terraform {
 }
 
 inputs = {
-  cluster_name    = "ovh-k3s-ha"
-  k3s_version     = "v1.33.5+k3s1"
-  ssh_user        = local.node_vars.locals.ssh_user
+  cluster_name = "ovh-k3s-ha"
+  k3s_version  = "v1.33.5+k3s1"
+  ssh_user     = local.node_vars.locals.ssh_user
 
   # All 3 OVH VPS act as control-plane + etcd nodes
   server_ips = [

@@ -16,7 +16,7 @@ dependency "vms" {
 }
 
 locals {
-  node_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  node_vars       = read_terragrunt_config(find_in_parent_folders("region.hcl"))
   _common_secrets = jsondecode(sops_decrypt_file("${get_parent_terragrunt_dir()}/common.sops.json"))
   _node_secrets   = jsondecode(sops_decrypt_file(find_in_parent_folders("secrets.sops.json")))
   secrets         = merge(local._common_secrets, local._node_secrets)
@@ -41,6 +41,6 @@ inputs = {
   pod_cidr     = "10.244.0.0/16"
   service_cidr = "10.96.0.0/12"
 
-  kubeadm_token       = local.secrets.kubeadm_token
-  kubeconfig_path     = "~/.kube/homelab-kubeadm.yaml"
+  kubeadm_token   = local.secrets.kubeadm_token
+  kubeconfig_path = "~/.kube/homelab-kubeadm.yaml"
 }

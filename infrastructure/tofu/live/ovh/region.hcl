@@ -12,7 +12,7 @@
 locals {
   region       = "ovh-eu"
   ovh_endpoint = "ovh-eu"
-  zone         = "MAD1"           # Madrid LocalZone
+  zone         = "MAD1" # Madrid LocalZone
   provider     = "ovh"
   node_names   = ["vps-6b58f204", "vps-04483f6e", "vps-d147fb4d"]
   ssh_user     = "debian"

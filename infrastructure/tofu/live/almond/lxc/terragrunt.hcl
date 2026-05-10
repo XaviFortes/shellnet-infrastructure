@@ -17,9 +17,9 @@ terraform {
 }
 
 inputs = {
-  node_name      = local.node_vars.locals.proxmox_node
-  storage_pool   = local.node_vars.locals.storage_pool
-  network_bridge = local.node_vars.locals.network_bridge
+  node_name       = local.node_vars.locals.proxmox_node
+  storage_pool    = local.node_vars.locals.storage_pool
+  network_bridge  = local.node_vars.locals.network_bridge
   ssh_public_keys = local.secrets.ssh_public_key
 
   lxc_containers = [
