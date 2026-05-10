@@ -1,0 +1,6 @@
+---
+# roles/proxmox-runner/handlers/main.yml
+- name: restart runner service
+  ansible.builtin.systemd:
+    name: "actions.runner.{{ github_repo | replace('/', '.') }}.{{ runner_name }}.service"
+    state: restarted

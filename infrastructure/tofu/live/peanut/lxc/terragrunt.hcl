@@ -1,6 +1,6 @@
 # terragrunt.hcl — peanut / lxc
 # Manages LXC containers on the peanut node.
-# Current containers: nginxproxymanager, adguard, homarr, postgres-replica
+# Current containers: nginxproxymanager, adguard, homarr, postgres-replica, ci-runner
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
@@ -85,6 +85,24 @@ inputs = {
       start_on_boot = false
       features      = { nesting = true }
       firewall      = true
+    },
+    {
+      # GitHub Actions runner with direct access to peanut (10.0.1.1) and almond (10.0.2.1).
+      # Registers as label "homelab-proxmox" — used by CI jobs that plan/apply Proxmox stacks.
+      hostname      = "ci-runner"
+      vmid          = 110
+      cores         = 2
+      memory        = 1024
+      swap          = 512
+      disk_size     = "8G"
+      ip            = "10.0.1.110/14"
+      gateway       = "10.0.0.1"
+      os_type       = "debian"
+      template      = "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
+      tags          = ["lxc", "ci"]
+      start_on_boot = true
+      features      = { nesting = true }
+      firewall      = false
     },
   ]
 }

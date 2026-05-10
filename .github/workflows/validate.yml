@@ -118,17 +118,14 @@ jobs:
         working-directory: ansible
 
   # ---------------------------------------------------------------------------
-  # Job 4: Terragrunt plan (all stacks).
-  # Runs on PRs and on push to main (before apply).
-  # On PRs: posts the plan output as a comment.
-  # Read-only B2 keys are sufficient for plan.
+  # Job 4a: Terragrunt plan — OVH / public stacks (no Proxmox API access needed).
   # ---------------------------------------------------------------------------
-  tofu-plan:
-    name: OpenTofu Plan
+  tofu-plan-ovh:
+    name: OpenTofu Plan (OVH)
     runs-on: homelab
     needs: tofu-validate
     permissions:
-      pull-requests: write   # needed to post PR comments
+      pull-requests: write
       contents: read
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -154,27 +151,32 @@ jobs:
               "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
             sudo chmod +x /usr/local/bin/sops
           fi
+          if ! command -v age-keygen &>/dev/null; then
+            curl -sL "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz" \
+              | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
+          fi
 
-      - name: Terragrunt plan (all stacks)
+      - name: Terragrunt plan (OVH stacks only)
         id: plan
         run: |
           set +e
-          # Exclude stacks that require SSH access to the internal network (10.0.x.x)
-          # — almond/k3s and peanut/kubeadm SSH into Proxmox VMs not reachable from CI.
-          # Run these manually with: ./run tofu plan almond/k3s  (or peanut/kubeadm)
-          EXCLUDE="--exclude-dir almond/k3s --exclude-dir peanut/kubeadm"
-          # Stream output live and capture to file simultaneously
-          terragrunt run --all plan --non-interactive $EXCLUDE 2>&1 | tee /tmp/plan_output.txt
+          # Only plan OVH stacks — Proxmox stacks run on homelab-proxmox runner (job 4b)
+          terragrunt run --all plan --non-interactive \
+            --exclude-dir almond/lxc \
+            --exclude-dir almond/vms \
+            --exclude-dir almond/k3s \
+            --exclude-dir peanut/lxc \
+            --exclude-dir peanut/vms \
+            --exclude-dir peanut/kubeadm \
+            2>&1 | tee /tmp/plan_output.txt
           EXIT_CODE=${PIPESTATUS[0]}
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
-          # Truncate to last 60000 chars to stay within GitHub comment limits
           OUTPUT=$(cat /tmp/plan_output.txt)
           if [ ${#OUTPUT} -gt 60000 ]; then
             OUTPUT="...(truncated — see Actions log for full output)...${OUTPUT: -60000}"
             printf '%s' "$OUTPUT" > /tmp/plan_output.txt
           fi
-
           echo "Plan exit code: ${EXIT_CODE}"
           exit $EXIT_CODE
         working-directory: infrastructure/tofu/live
@@ -190,7 +192,7 @@ jobs:
             const status = exitCode === '0' ? '✅ Success' : '❌ Failed';
 
             const body = [
-              `## Terragrunt Plan — ${status}`,
+              `## Terragrunt Plan (OVH) — ${status}`,
               '',
               '<details><summary>Show Plan Output</summary>',
               '',
@@ -203,7 +205,6 @@ jobs:
               `*Triggered by commit \`${{ github.sha }}\` on branch \`${{ github.head_ref }}\`*`,
             ].join('\n');
 
-            // Delete previous plan comments to avoid clutter
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -211,7 +212,7 @@ jobs:
             });
             for (const comment of comments) {
               if (comment.user.login === 'github-actions[bot]' &&
-                  comment.body.startsWith('## Terragrunt Plan')) {
+                  comment.body.startsWith('## Terragrunt Plan (OVH)')) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -219,7 +220,113 @@ jobs:
                 });
               }
             }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
 
+  # ---------------------------------------------------------------------------
+  # Job 4b: Terragrunt plan — Proxmox stacks (requires LAN access to 10.0.x.x).
+  # Runs on homelab-proxmox runner (ci-runner LXC on peanut, vmid 110).
+  # ---------------------------------------------------------------------------
+  tofu-plan-proxmox:
+    name: OpenTofu Plan (Proxmox)
+    runs-on: homelab-proxmox
+    needs: tofu-validate
+    permissions:
+      pull-requests: write
+      contents: read
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure tools (tofu / terragrunt / sops / age)
+        run: |
+          set -euo pipefail
+          if ! command -v tofu &>/dev/null; then
+            curl -sL "https://github.com/opentofu/opentofu/releases/download/v${TOFU_VERSION}/tofu_${TOFU_VERSION}_linux_amd64.tar.gz" \
+              | sudo tar -xz -C /usr/local/bin tofu
+          fi
+          if ! command -v terragrunt &>/dev/null; then
+            sudo curl -sLo /usr/local/bin/terragrunt \
+              "https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64"
+            sudo chmod +x /usr/local/bin/terragrunt
+          fi
+          if ! command -v sops &>/dev/null; then
+            sudo curl -sLo /usr/local/bin/sops \
+              "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+            sudo chmod +x /usr/local/bin/sops
+          fi
+          if ! command -v age-keygen &>/dev/null; then
+            curl -sL "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz" \
+              | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
+          fi
+
+      - name: Terragrunt plan (Proxmox stacks only)
+        id: plan
+        run: |
+          set +e
+          # Only plan stacks that need direct Proxmox API access (10.0.1.1 / 10.0.2.1)
+          terragrunt run --all plan --non-interactive \
+            --exclude-dir ovh \
+            --exclude-dir ovh-gra \
+            2>&1 | tee /tmp/plan_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+
+          OUTPUT=$(cat /tmp/plan_output.txt)
+          if [ ${#OUTPUT} -gt 60000 ]; then
+            OUTPUT="...(truncated — see Actions log for full output)...${OUTPUT: -60000}"
+            printf '%s' "$OUTPUT" > /tmp/plan_output.txt
+          fi
+          echo "Plan exit code: ${EXIT_CODE}"
+          exit $EXIT_CODE
+        working-directory: infrastructure/tofu/live
+
+      - name: Post plan as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('/tmp/plan_output.txt', 'utf8');
+            const exitCode = '${{ steps.plan.outputs.exit_code }}';
+            const status = exitCode === '0' ? '✅ Success' : '❌ Failed';
+
+            const body = [
+              `## Terragrunt Plan (Proxmox) — ${status}`,
+              '',
+              '<details><summary>Show Plan Output</summary>',
+              '',
+              '```',
+              planOutput,
+              '```',
+              '',
+              '</details>',
+              '',
+              `*Triggered by commit \`${{ github.sha }}\` on branch \`${{ github.head_ref }}\`*`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            for (const comment of comments) {
+              if (comment.user.login === 'github-actions[bot]' &&
+                  comment.body.startsWith('## Terragrunt Plan (Proxmox)')) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              }
+            }
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -232,11 +339,11 @@ jobs:
   # Requires 'production' GitHub Environment with required reviewers configured.
   # Uses read-write B2 keys (B2_RW_ACCESS_KEY_ID / B2_RW_SECRET_KEY).
   # ---------------------------------------------------------------------------
-  tofu-apply:
-    name: OpenTofu Apply
+  tofu-apply-ovh:
+    name: OpenTofu Apply (OVH)
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: homelab
-    needs: tofu-plan
+    needs: [tofu-plan-ovh, tofu-plan-proxmox]
     environment: production
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -262,10 +369,60 @@ jobs:
               "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
             sudo chmod +x /usr/local/bin/sops
           fi
+          if ! command -v age-keygen &>/dev/null; then
+            curl -sL "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz" \
+              | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
+          fi
 
-      - name: Terragrunt apply (all stacks)
+      - name: Terragrunt apply (OVH stacks)
         run: |
-          # Same exclusions as plan — internal-network stacks require SSH to Proxmox VMs
           terragrunt run --all apply --non-interactive --auto-approve \
-            --exclude-dir almond/k3s --exclude-dir peanut/kubeadm
+            --exclude-dir almond/lxc \
+            --exclude-dir almond/vms \
+            --exclude-dir almond/k3s \
+            --exclude-dir peanut/lxc \
+            --exclude-dir peanut/vms \
+            --exclude-dir peanut/kubeadm
+        working-directory: infrastructure/tofu/live
+
+  tofu-apply-proxmox:
+    name: OpenTofu Apply (Proxmox)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: homelab-proxmox
+    needs: [tofu-plan-ovh, tofu-plan-proxmox]
+    environment: production
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_RW_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_RW_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure tools (tofu / terragrunt / sops / age)
+        run: |
+          set -euo pipefail
+          if ! command -v tofu &>/dev/null; then
+            curl -sL "https://github.com/opentofu/opentofu/releases/download/v${TOFU_VERSION}/tofu_${TOFU_VERSION}_linux_amd64.tar.gz" \
+              | sudo tar -xz -C /usr/local/bin tofu
+          fi
+          if ! command -v terragrunt &>/dev/null; then
+            sudo curl -sLo /usr/local/bin/terragrunt \
+              "https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64"
+            sudo chmod +x /usr/local/bin/terragrunt
+          fi
+          if ! command -v sops &>/dev/null; then
+            sudo curl -sLo /usr/local/bin/sops \
+              "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+            sudo chmod +x /usr/local/bin/sops
+          fi
+          if ! command -v age-keygen &>/dev/null; then
+            curl -sL "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz" \
+              | sudo tar -xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
+          fi
+
+      - name: Terragrunt apply (Proxmox stacks)
+        run: |
+          terragrunt run --all apply --non-interactive --auto-approve \
+            --exclude-dir ovh \
+            --exclude-dir ovh-gra
         working-directory: infrastructure/tofu/live

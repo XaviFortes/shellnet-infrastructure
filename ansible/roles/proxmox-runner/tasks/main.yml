@@ -1,0 +1,152 @@
+---
+# roles/proxmox-runner/tasks/main.yml
+# Installs the GitHub Actions runner binary on a Proxmox LXC and registers it
+# as a systemd service with label "homelab-proxmox".
+#
+# Required vault vars (loaded from group_vars/proxmox/vault.sops.yml):
+#   vault_github_runner_app_id
+#   vault_github_runner_app_installation_id
+#   vault_github_runner_app_private_key
+#
+# Usage:
+#   ansible-playbook -i inventories/proxmox playbooks/proxmox-runner.yml
+
+- name: Load vault secrets
+  community.sops.load_vars:
+    file: "{{ playbook_dir }}/group_vars/ovh_k3s/vault.sops.yml"
+    expressions: ignore  # don't eval Jinja in encrypted values
+  no_log: true
+
+- name: Install dependencies
+  ansible.builtin.apt:
+    name:
+      - curl
+      - tar
+      - jq
+      - git
+      - sudo
+    state: present
+    update_cache: true
+
+- name: Create runner user
+  ansible.builtin.user:
+    name: runner
+    shell: /bin/bash
+    system: false
+    create_home: true
+    home: /home/runner
+
+- name: Create runner directory
+  ansible.builtin.file:
+    path: /home/runner/actions-runner
+    state: directory
+    owner: runner
+    group: runner
+    mode: "0755"
+
+- name: Check current runner version
+  ansible.builtin.stat:
+    path: /home/runner/actions-runner/run.sh
+  register: runner_installed
+
+- name: Download and extract runner tarball
+  ansible.builtin.shell: |
+    set -e
+    RUNNER_VERSION="{{ runner_version }}"
+    ARCH="linux-x64"
+    URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-${ARCH}-${RUNNER_VERSION}.tar.gz"
+    curl -sL "$URL" | tar -xz -C /home/runner/actions-runner
+    chown -R runner:runner /home/runner/actions-runner
+  when: not runner_installed.stat.exists
+  args:
+    executable: /bin/bash
+
+- name: Install runner dependencies (dotnet libs)
+  ansible.builtin.shell: /home/runner/actions-runner/bin/installdependencies.sh
+  when: not runner_installed.stat.exists
+  args:
+    executable: /bin/bash
+
+- name: Generate GitHub App installation token
+  ansible.builtin.shell: |
+    set -e
+    APP_ID="{{ vault_arc_github_app_id }}"
+    INSTALLATION_ID="{{ vault_arc_github_app_installation_id }}"
+    PRIVATE_KEY="{{ vault_arc_github_app_private_key }}"
+
+    # Build JWT
+    NOW=$(date +%s)
+    IAT=$((NOW - 60))
+    EXP=$((NOW + 540))
+    HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
+    PAYLOAD=$(printf '{"iat":%s,"exp":%s,"iss":"%s"}' "$IAT" "$EXP" "$APP_ID" | base64 -w0 | tr '+/' '-_' | tr -d '=')
+    SIG_INPUT="${HEADER}.${PAYLOAD}"
+    SIG=$(printf '%s' "$SIG_INPUT" | openssl dgst -sha256 -sign <(printf '%s' "$PRIVATE_KEY") | base64 -w0 | tr '+/' '-_' | tr -d '=')
+    JWT="${SIG_INPUT}.${SIG}"
+
+    # Get installation token
+    TOKEN=$(curl -s -X POST \
+      -H "Authorization: Bearer ${JWT}" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/app/installations/${INSTALLATION_ID}/access_tokens" \
+      | jq -r '.token')
+    echo "$TOKEN"
+  register: gh_token_result
+  no_log: true
+  when: not runner_installed.stat.exists
+  args:
+    executable: /bin/bash
+
+- name: Get runner registration token
+  ansible.builtin.shell: |
+    curl -s -X POST \
+      -H "Authorization: token {{ gh_token_result.stdout }}" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/{{ github_repo }}/actions/runners/registration-token" \
+      | jq -r '.token'
+  register: reg_token_result
+  no_log: true
+  when: not runner_installed.stat.exists
+  args:
+    executable: /bin/bash
+
+- name: Configure runner
+  ansible.builtin.shell: |
+    set -e
+    cd /home/runner/actions-runner
+    ./config.sh \
+      --url "https://github.com/{{ github_repo }}" \
+      --token "{{ reg_token_result.stdout }}" \
+      --name "{{ runner_name }}" \
+      --labels "{{ runner_labels }}" \
+      --runnergroup "Default" \
+      --work "_work" \
+      --unattended \
+      --replace
+  become: true
+  become_user: runner
+  no_log: true
+  when: not runner_installed.stat.exists
+  args:
+    executable: /bin/bash
+
+- name: Install runner as systemd service
+  ansible.builtin.shell: |
+    cd /home/runner/actions-runner
+    ./svc.sh install runner
+  when: not runner_installed.stat.exists
+  args:
+    executable: /bin/bash
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Start and enable runner service
+  ansible.builtin.shell: |
+    set -e
+    SVC=$(systemctl list-unit-files 'actions.runner.*' --no-legend | awk '{print $1}' | head -1)
+    systemctl enable "$SVC"
+    systemctl start "$SVC"
+  args:
+    executable: /bin/bash

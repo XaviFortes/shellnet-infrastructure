@@ -1,0 +1,21 @@
+---
+# ansible/proxmox-runner.yml
+# Provisions the GitHub Actions runner on the ci-runner LXC (peanut/110).
+# This runner has direct access to Proxmox APIs (10.0.1.1, 10.0.2.1) and
+# registers with label "homelab-proxmox" for use by CI Proxmox stacks.
+#
+# Run manually (requires VPN/SSH to homelab):
+#   ./run ansible proxmox proxmox-runner.yml
+#
+# The LXC must already exist (provisioned via: ./run tofu apply peanut/lxc)
+- name: Provision homelab-proxmox CI runner
+  hosts: ci_runner
+  become: true
+  roles:
+    - role: common
+    - role: proxmox-runner
+  vars:
+    runner_version: "2.323.0"
+    github_repo: "XaviFortes/shellnet-infrastructure"
+    runner_name: "proxmox-ci-01"
+    runner_labels: "homelab-proxmox,proxmox,self-hosted,linux,x64"
