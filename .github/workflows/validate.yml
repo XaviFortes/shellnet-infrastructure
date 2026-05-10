@@ -160,16 +160,14 @@ jobs:
         id: plan
         run: |
           set +e
-          # Only plan OVH stacks — Proxmox stacks run on homelab-proxmox runner (job 4b)
-          terragrunt run --all plan --non-interactive \
-            --exclude-dir almond/lxc \
-            --exclude-dir almond/vms \
-            --exclude-dir almond/k3s \
-            --exclude-dir peanut/lxc \
-            --exclude-dir peanut/vms \
-            --exclude-dir peanut/kubeadm \
-            2>&1 | tee /tmp/plan_output.txt
-          EXIT_CODE=${PIPESTATUS[0]}
+          # Only plan OVH stacks — run from each OVH subdirectory to avoid
+          # evaluating Proxmox stack locals (which need LAN SOPS secrets).
+          EXIT_CODE=0
+          for dir in ovh ovh-gra; do
+            (cd "$dir" && terragrunt run --all plan --non-interactive 2>&1) | tee -a /tmp/plan_output.txt
+            LAST=${PIPESTATUS[0]}
+            [ $LAST -ne 0 ] && EXIT_CODE=$LAST
+          done
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
           OUTPUT=$(cat /tmp/plan_output.txt)
@@ -272,11 +270,13 @@ jobs:
         run: |
           set +e
           # Only plan stacks that need direct Proxmox API access (10.0.1.1 / 10.0.2.1)
-          terragrunt run --all plan --non-interactive \
-            --exclude-dir ovh \
-            --exclude-dir ovh-gra \
-            2>&1 | tee /tmp/plan_output.txt
-          EXIT_CODE=${PIPESTATUS[0]}
+          # Run from each Proxmox node subdirectory to avoid evaluating OVH locals.
+          EXIT_CODE=0
+          for dir in peanut almond; do
+            (cd "$dir" && terragrunt run --all plan --non-interactive 2>&1) | tee -a /tmp/plan_output.txt
+            LAST=${PIPESTATUS[0]}
+            [ $LAST -ne 0 ] && EXIT_CODE=$LAST
+          done
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
           OUTPUT=$(cat /tmp/plan_output.txt)
@@ -376,13 +376,9 @@ jobs:
 
       - name: Terragrunt apply (OVH stacks)
         run: |
-          terragrunt run --all apply --non-interactive --auto-approve \
-            --exclude-dir almond/lxc \
-            --exclude-dir almond/vms \
-            --exclude-dir almond/k3s \
-            --exclude-dir peanut/lxc \
-            --exclude-dir peanut/vms \
-            --exclude-dir peanut/kubeadm
+          for dir in ovh ovh-gra; do
+            (cd "$dir" && terragrunt run --all apply --non-interactive --auto-approve)
+          done
         working-directory: infrastructure/tofu/live
 
   tofu-apply-proxmox:
@@ -422,7 +418,7 @@ jobs:
 
       - name: Terragrunt apply (Proxmox stacks)
         run: |
-          terragrunt run --all apply --non-interactive --auto-approve \
-            --exclude-dir ovh \
-            --exclude-dir ovh-gra
+          for dir in peanut almond; do
+            (cd "$dir" && terragrunt run --all apply --non-interactive --auto-approve)
+          done
         working-directory: infrastructure/tofu/live
