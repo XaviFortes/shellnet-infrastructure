@@ -1,0 +1,63 @@
+---
+# kubernetes/apps/xavifortes/argocd-app.yaml
+#
+# ArgoCD Application for xavifortes.com.
+# Add this file to the shellnet-infrastructure repo at:
+#   kubernetes/apps/xavifortes/argocd-app.yaml
+#
+# ArgoCD watches the xavifortes.com repository's kubernetes/apps/xavifortes-web/
+# directory and automatically applies any changes to the xavifortes namespace
+# on the OVH MAD1 k3s cluster.
+#
+# Prerequisites on the cluster before applying:
+#   1. ghcr.io pull secret:
+#      kubectl create secret docker-registry ghcr-pull-secret \
+#        --docker-server=ghcr.io \
+#        --docker-username=xavifortes \
+#        --docker-password=<GITHUB_PAT_READ_PACKAGES> \
+#        -n xavifortes
+#
+#   2. ClusterIssuer letsencrypt-prod must exist (cert-manager).
+#      If not, create it:
+#        kubectl apply -f - <<EOF
+#        apiVersion: cert-manager.io/v1
+#        kind: ClusterIssuer
+#        metadata:
+#          name: letsencrypt-prod
+#        spec:
+#          acme:
+#            server: https://acme-v02.api.letsencrypt.org/directory
+#            email: hi@xavifortes.com
+#            privateKeySecretRef:
+#              name: letsencrypt-prod-key
+#            solvers:
+#              - http01:
+#                  ingress:
+#                    class: traefik
+#        EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: xavifortes-web
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/xavifortes/xavifortes.com
+    targetRevision: HEAD
+    path: kubernetes/apps/xavifortes-web
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: xavifortes
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
